@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, iter::Peekable, str::Chars};
 
-use crate::{
+use crate::lang::{
     errors::{CompileError, ErrorType},
     tokens::{Literal, Operator, ShortHand, Token, Type},
 };
@@ -102,7 +102,7 @@ impl LexEngine {
             }
             if has_point {
                 return match num_string.parse::<f64>() {
-                    cml(x) => Ok(Token::Lit(Literal::Dcml(x))),
+                    Ok(x) => Ok(Token::Lit(Literal::Dcml(x))),
                     Err(_) => unreachable!(),
                 };
             } else {

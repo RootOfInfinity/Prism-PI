@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::{lexer::LexEngine, tokens::Token};
+use crate::lang::{lexer::LexEngine, tokens::Token};
 
 pub struct Repl {
     lex_output: bool,
