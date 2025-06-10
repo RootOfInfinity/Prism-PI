@@ -17,6 +17,8 @@ pub enum Token {
     RightCurly,
     Comma,
     Assign,
+    Return,
+    RArrow,
     EndOfFile,
 }
 

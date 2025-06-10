@@ -73,6 +73,7 @@ impl LexEngine {
                 "while" => Token::While,
                 "true" => Token::Lit(Literal::Bool(true)),
                 "false" => Token::Lit(Literal::Bool(false)),
+                "return" => Token::Return,
                 x => Token::Ident(x.to_owned()),
             });
         }
@@ -275,6 +276,7 @@ impl LexEngine {
             "]" => Some(Token::RightBrack),
             "{" => Some(Token::LeftCurly),
             "}" => Some(Token::RightCurly),
+            "->" => Some(Token::RArrow),
 
             _ => None,
         }
