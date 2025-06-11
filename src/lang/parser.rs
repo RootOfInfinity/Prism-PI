@@ -1,4 +1,4 @@
-use std::{alloc, collections::VecDeque};
+use std::collections::VecDeque;
 
 use crate::lang::tokens::Token;
 
