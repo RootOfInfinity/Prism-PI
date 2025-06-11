@@ -13,8 +13,8 @@ pub struct LexEngine {
     finished: bool,
 }
 impl LexEngine {
-    pub fn new(chars: String) -> Self {
-        let mut char_vec = chars.chars().collect::<VecDeque<char>>();
+    pub fn new(langstr: String) -> Self {
+        let mut char_vec = langstr.chars().collect::<VecDeque<char>>();
         let first_char = match char_vec.pop_front() {
             Some(x) => x,
             None => ' ',
