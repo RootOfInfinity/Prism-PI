@@ -1,10 +1,9 @@
 use std::collections::VecDeque;
 
-use crate::lang::tokens::Token;
-
 use super::{
     ast::{FunctionAst, Loc},
     errors::{CompileError, ErrorType},
+    tokens::{Token, Type},
 };
 
 pub struct ParsingMachine {
@@ -40,6 +39,60 @@ impl ParsingMachine {
             ));
         };
         self.eat_tok();
+        let Token::Ident(func_ident) = self.cur_tok.0.clone() else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        self.eat_tok();
+        let Token::LeftParen = self.cur_tok.0.clone() else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        // there will be some WEIRD bugs with commas
+        // that will be fixed later.
+        // this comment will be removed when it is fixed.
+        let mut peram_vec: Vec<(Type, String)> = Vec::new();
+        loop {
+            match self.cur_tok.0.clone() {
+                Token::RightParen => {
+                    self.eat_tok();
+                    break;
+                }
+                Token::DeclareType(x) => {
+                    self.eat_tok();
+                    let Token::Ident(peram) = self.cur_tok.0.clone() else {
+                        return Err(CompileError::new(
+                            ErrorType::ParsingError,
+                            self.cur_tok.1.line,
+                            self.cur_tok.1.col,
+                        ));
+                    };
+                    self.eat_tok();
+                    peram_vec.push((x, peram));
+                    if let (Token::Comma, _) = self.cur_tok {
+                        self.eat_tok();
+                        continue;
+                    }
+                    if let Token::RightParen = self.cur_tok.0 {
+                        self.eat_tok();
+                        break;
+                    }
+                }
+                _ => {
+                    return Err(CompileError::new(
+                        ErrorType::ParsingError,
+                        self.cur_tok.1.line,
+                        self.cur_tok.1.col,
+                    ));
+                }
+            }
+        }
 
         todo!()
     }

@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::lang::{lexer::LexEngine, tokens::Token};
+use super::{ast::Loc, lexer::LexEngine, tokens::Token};
 
 pub struct Repl {
     lex_output: bool,
@@ -35,7 +35,7 @@ impl Repl {
         let mut tok_vec = Vec::new();
         loop {
             match lex.get_tok() {
-                Ok(Token::EndOfFile) => break,
+                Ok((Token::EndOfFile, _)) => break,
                 Ok(x) => tok_vec.push(x),
                 Err(e) => eprintln!("Error: {:#?} at {}:{}", e.e_type, e.line, e.col),
             }
@@ -54,7 +54,7 @@ impl Repl {
             let mut tok_vec = Vec::new();
             loop {
                 match lex.get_tok() {
-                    Ok(Token::EndOfFile) => break,
+                    Ok((Token::EndOfFile, _)) => break,
                     Ok(x) => tok_vec.push(x),
                     Err(e) => eprintln!("Error: {:#?} at {}:{}", e.e_type, e.line, e.col),
                 }
