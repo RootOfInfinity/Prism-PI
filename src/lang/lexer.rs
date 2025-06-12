@@ -5,6 +5,8 @@ use crate::lang::{
     tokens::{Literal, Operator, ShortHand, Token, Type},
 };
 
+use super::ast::Loc;
+
 pub struct LexEngine {
     line: u32,
     col: u32,
@@ -33,15 +35,15 @@ impl LexEngine {
         }
         self.finished = false;
     }
-    pub fn get_tok(&mut self) -> Result<Token, CompileError> {
-        if self.finished {
-            return Ok(Token::EndOfFile);
-        }
+    pub fn get_tok(&mut self) -> Result<(Token, Loc), CompileError> {
         // remove whitespace
+        if self.finished {
+            return Ok((Token::EndOfFile, Loc::new(self.line, self.col)));
+        }
         while self.cur_char.is_whitespace() {
             self.eat_char();
             if self.finished {
-                return Ok(Token::EndOfFile);
+                return Ok((Token::EndOfFile, Loc::new(self.line, self.col)));
             }
         }
         // remove comments
@@ -49,7 +51,13 @@ impl LexEngine {
             while self.cur_char != '\n' {
                 self.eat_char();
                 if self.finished {
-                    return Ok(Token::EndOfFile);
+                    return Ok((
+                        Token::EndOfFile,
+                        Loc {
+                            line: self.line,
+                            col: self.col,
+                        },
+                    ));
                 }
             }
             self.eat_char();
@@ -63,19 +71,25 @@ impl LexEngine {
                 ident_string.push(self.cur_char);
                 self.eat_char();
             }
-            return Ok(match ident_string.as_str() {
-                "fun" => Token::Fun,
-                "int" => Token::DeclareType(Type::Int),
-                "string" => Token::DeclareType(Type::String),
-                "dcml" => Token::DeclareType(Type::Dcml),
-                "bool" => Token::DeclareType(Type::Bool),
-                "if" => Token::If,
-                "while" => Token::While,
-                "true" => Token::Lit(Literal::Bool(true)),
-                "false" => Token::Lit(Literal::Bool(false)),
-                "return" => Token::Return,
-                x => Token::Ident(x.to_owned()),
-            });
+            return Ok((
+                match ident_string.as_str() {
+                    "fun" => Token::Fun,
+                    "int" => Token::DeclareType(Type::Int),
+                    "string" => Token::DeclareType(Type::String),
+                    "dcml" => Token::DeclareType(Type::Dcml),
+                    "bool" => Token::DeclareType(Type::Bool),
+                    "if" => Token::If,
+                    "while" => Token::While,
+                    "true" => Token::Lit(Literal::Bool(true)),
+                    "false" => Token::Lit(Literal::Bool(false)),
+                    "return" => Token::Return,
+                    x => Token::Ident(x.to_owned()),
+                },
+                Loc {
+                    line: self.line,
+                    col: self.col,
+                },
+            ));
         }
         if self.is_numeric() {
             let mut has_point = false;
@@ -103,12 +117,24 @@ impl LexEngine {
             }
             if has_point {
                 return match num_string.parse::<f64>() {
-                    Ok(x) => Ok(Token::Lit(Literal::Dcml(x))),
+                    Ok(x) => Ok((
+                        Token::Lit(Literal::Dcml(x)),
+                        Loc {
+                            line: self.line,
+                            col: self.col,
+                        },
+                    )),
                     Err(_) => unreachable!(),
                 };
             } else {
                 return match num_string.parse::<i32>() {
-                    Ok(x) => Ok(Token::Lit(Literal::Int(x))),
+                    Ok(x) => Ok((
+                        Token::Lit(Literal::Int(x)),
+                        Loc {
+                            line: self.line,
+                            col: self.col,
+                        },
+                    )),
                     Err(_) => unreachable!(),
                 };
             }
@@ -161,7 +187,13 @@ impl LexEngine {
                 ));
             }
             self.eat_char();
-            return Ok(Token::Lit(Literal::String(string_lit)));
+            return Ok((
+                Token::Lit(Literal::String(string_lit)),
+                Loc {
+                    line: self.line,
+                    col: self.col,
+                },
+            ));
         }
         if self.is_part_of_symbol() {
             let mut sym_string = String::new();
@@ -171,7 +203,15 @@ impl LexEngine {
                 sym_string.push(self.cur_char);
             }
             match LexEngine::get_symbol(&sym_string) {
-                Some(x) => return Ok(x),
+                Some(x) => {
+                    return Ok((
+                        x,
+                        Loc {
+                            line: self.line,
+                            col: self.col,
+                        },
+                    ));
+                }
                 None => {
                     return Err(CompileError::new(
                         ErrorType::LexingError,

@@ -1,5 +1,13 @@
 use super::tokens::{Literal, Operator, Type};
 
+pub struct FunctionAst {
+    loc: Loc,
+    name: String,
+    params: Vec<(Type, String)>,
+    code: Vec<Statement>,
+    ret_type: Type,
+}
+
 pub enum ExprAST {
     Var(String),
     Lit(Literal),
@@ -8,12 +16,12 @@ pub enum ExprAST {
 }
 
 pub enum Statement {
-    Expr,
-    Decl,
-    Assign,
-    If,
-    While,
-    Return,
+    Expr(Expression),
+    Decl(Declaration),
+    Assign(Assignment),
+    If(IfBlock),
+    While(WhileBlock),
+    Return(Return),
 }
 
 pub struct Declaration {
@@ -56,4 +64,9 @@ pub struct Return {
 pub struct Loc {
     pub line: u32,
     pub col: u32,
+}
+impl Loc {
+    pub fn new(line: u32, col: u32) -> Self {
+        Loc { line, col }
+    }
 }
