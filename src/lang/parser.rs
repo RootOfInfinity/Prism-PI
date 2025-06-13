@@ -58,32 +58,30 @@ impl ParsingMachine {
         // that will be fixed later.
         // this comment will be removed when it is fixed.
         let mut peram_vec: Vec<(Type, String)> = Vec::new();
-        loop {
-            match self.cur_tok.0.clone() {
-                Token::RightParen => {
+        while !matches!(self.cur_tok.0, Token::RightParen) {
+            let Token::DeclareType(typ) = self.cur_tok.0.clone() else {
+                return Err(CompileError::new(
+                    ErrorType::ParsingError,
+                    self.cur_tok.1.line,
+                    self.cur_tok.1.col,
+                ));
+            };
+            self.eat_tok(); // eats the type
+            let Token::Ident(arg_name) = self.cur_tok.0.clone() else {
+                return Err(CompileError::new(
+                    ErrorType::ParsingError,
+                    self.cur_tok.1.line,
+                    self.cur_tok.1.col,
+                ));
+            };
+            self.eat_tok(); // eats the ident
+            peram_vec.push((typ, arg_name));
+            match self.cur_tok.0 {
+                Token::Comma => {
                     self.eat_tok();
-                    break;
+                    continue;
                 }
-                Token::DeclareType(x) => {
-                    self.eat_tok();
-                    let Token::Ident(peram) = self.cur_tok.0.clone() else {
-                        return Err(CompileError::new(
-                            ErrorType::ParsingError,
-                            self.cur_tok.1.line,
-                            self.cur_tok.1.col,
-                        ));
-                    };
-                    self.eat_tok();
-                    peram_vec.push((x, peram));
-                    if let (Token::Comma, _) = self.cur_tok {
-                        self.eat_tok();
-                        continue;
-                    }
-                    if let Token::RightParen = self.cur_tok.0 {
-                        self.eat_tok();
-                        break;
-                    }
-                }
+                Token::RightParen => break,
                 _ => {
                     return Err(CompileError::new(
                         ErrorType::ParsingError,
