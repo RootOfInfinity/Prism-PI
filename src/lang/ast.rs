@@ -11,7 +11,7 @@ pub struct FunctionAst {
 pub enum ExprAST {
     Var(String),
     Lit(Literal),
-    BinOp((Operator, Box<Expression>, Box<Expression>)),
+    BinOp(Operator, Box<ExprAST>, Box<ExprAST>),
     Call(String, Vec<ExprAST>),
 }
 
@@ -28,7 +28,7 @@ pub struct Declaration {
     pub typ: Type,
     pub ident: String,
     pub ident_loc: Loc,
-    pub val: Literal,
+    pub val: ExprAST,
     pub val_loc: Loc,
 }
 

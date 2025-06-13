@@ -1,7 +1,10 @@
 use std::collections::VecDeque;
 
+use super::ast::{Declaration, Expression};
+
+use super::tokens::Operator;
 use super::{
-    ast::{FunctionAst, Loc},
+    ast::{ExprAST, FunctionAst, Loc, Statement},
     errors::{CompileError, ErrorType},
     tokens::{Token, Type},
 };
@@ -94,6 +97,99 @@ impl ParsingMachine {
 
         todo!()
     }
+    fn collect_curly_statements(
+        &mut self,
+    ) -> Result<Vec<Result<Statement, CompileError>>, CompileError> {
+        if !matches!(self.cur_tok.0, Token::LeftCurly) {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        }
+        self.eat_tok(); // eat left curly
+        let mut state_vec: Vec<Result<Statement, CompileError>> = Vec::new();
+        while !matches!(self.cur_tok.0, Token::RightCurly) {
+            let statement = self.parse_statement();
+            state_vec.push(statement);
+        }
+        self.eat_tok();
+        Ok(state_vec)
+    }
+    fn parse_statement(&mut self) -> Result<Statement, CompileError> {
+        match self.cur_tok.0 {
+            Token::DeclareType(_) => self.parse_decl(),
+            _ => todo!(),
+        }
+    }
+    fn parse_decl(&mut self) -> Result<Statement, CompileError> {
+        let Token::DeclareType(typ) = self.cur_tok.0.clone() else {
+            unreachable!();
+        };
+        self.eat_tok(); // eat type
+        let (Token::Ident(ident), loc) = self.cur_tok.clone() else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        self.eat_tok(); // eat ident
+        if !matches!(self.cur_tok.0, Token::Assign) {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        }
+        self.eat_tok();
+        let expr = self.parse_expression()?;
+        let Token::Semicolon = self.cur_tok.0 else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        Ok(Statement::Decl(Declaration {
+            typ,
+            ident,
+            ident_loc: loc,
+            val: expr.expr,
+            val_loc: expr.loc,
+        }))
+    }
+    fn parse_expression(&mut self) -> Result<Expression, CompileError> {
+        todo!()
+    }
+    fn parse_expr(&mut self) -> Result<ExprAST, CompileError> {
+        let lhs = self.parse_primary()?;
+
+        self.parse_rhs(0, lhs)
+    }
+    fn parse_rhs(&mut self, expr_prior: u32, lhs: ExprAST) -> Result<ExprAST, CompileError> {
+        let mut lhs = lhs;
+        loop {
+            let Token::Op(binop) = self.cur_tok.0.clone() else {
+                return Ok(lhs);
+            };
+            let tok_prior = ParsingMachine::get_priority(&binop);
+            if tok_prior < expr_prior {
+                return Ok(lhs);
+            }
+            self.eat_tok(); // eating the operator
+            let mut rhs = self.parse_primary()?;
+            if let Token::Op(new_binop) = self.cur_tok.0.clone() {
+                if ParsingMachine::get_priority(&new_binop) > tok_prior {
+                    rhs = self.parse_rhs(tok_prior + 1, rhs)?;
+                }
+            }
+            lhs = ExprAST::BinOp(binop, Box::new(lhs), Box::new(rhs));
+        }
+    }
+    fn parse_primary(&mut self) -> Result<ExprAST, CompileError> {
+        todo!()
+    }
 
     fn eat_tok(&mut self) {
         self.cur_tok = match self.tok_vec.pop_front() {
@@ -107,5 +203,8 @@ impl ParsingMachine {
         } else {
             None
         }
+    }
+    fn get_priority(op: &Operator) -> u32 {
+        todo!()
     }
 }
