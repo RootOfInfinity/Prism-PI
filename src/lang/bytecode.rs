@@ -2,3 +2,26 @@ pub struct Chunk {
     pub code: Vec<u8>,
     pub values: Vec<u8>,
 }
+
+enum Instruction {
+    Ret,
+    Push(u8, u16),
+    Pop,
+    Mov(u16, u8, u16),
+    Alloc(u8, u16),
+    Freet,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    And,
+    Or,
+    Xor,
+    Cmp,
+    Jmp(u32),
+    Je(u32),
+    Jl(u32),
+    Jle(u32),
+    Jg(u32),
+    Jge(u32),
+}
