@@ -1,5 +1,5 @@
 
-enum Instruction {
+pub enum Instruction {
     Ret,
     Push(u8, u16),
     Pop,
