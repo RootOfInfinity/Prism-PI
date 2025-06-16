@@ -21,5 +21,5 @@ pub enum Instruction {
     Jg(u32),
     Jge(u32),
     Call(u32),
-    Fun(u16),
+    Fun(u32),
 }
