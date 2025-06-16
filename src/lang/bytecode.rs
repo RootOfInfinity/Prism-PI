@@ -52,9 +52,11 @@ impl Instruction {
                 inst_slice[4] = z[0];
                 inst_slice[5] = z[1];
             }
-            &Instruction::Alloc(x1b, y1b) => {
+            &Instruction::Alloc(x1b, y2b) => {
                 inst_slice[0] = 5u8;
-                //finish this one
+                let y = y2b.to_le_bytes();
+                inst_slice[1] = y[0];
+                inst_slice[2] = y[1];
             }
             &Instruction::Freet => inst_slice[0] = 6u8,
             &Instruction::Add => inst_slice[0] = 7u8,
@@ -129,7 +131,6 @@ impl Instruction {
                 inst_slice[3] = x[2];
                 inst_slice[4] = x[3];
             }
-        };
-        todo!()
+        }
     }
 }
