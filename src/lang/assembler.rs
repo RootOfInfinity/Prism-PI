@@ -1,5 +1,38 @@
 use super::asm::{Instruction, NoLabelInst};
 //formatting will be fixed later
+pub fn assemble_grp_efficent(asm_vec: Vec<NoLabelInst>) -> Vec<u8> {
+    let mut bcode = Vec::new();
+    for inst in asm_vec {
+        let bin = assemble(&inst);
+        match bin[0] {
+            1 => bcode.push(bin[0]),
+            2 => bcode.extend_from_slice(&bin[0..4]),
+            3 => bcode.push(bin[0]),
+            4 => bcode.extend_from_slice(&bin),
+            5 => bcode.extend_from_slice(&bin[0..4]),
+            6 => bcode.push(bin[0]),
+            7 => bcode.push(bin[0]),
+            8 => bcode.push(bin[0]),
+            9 => bcode.push(bin[0]),
+            10 => bcode.push(bin[0]),
+            11 => bcode.push(bin[0]),
+            12 => bcode.push(bin[0]),
+            13 => bcode.push(bin[0]),
+            14 => bcode.push(bin[0]),
+            15 => bcode.push(bin[0]),
+            16 => bcode.extend_from_slice(&bin[0..5]),
+            17 => bcode.extend_from_slice(&bin[0..5]),
+            18 => bcode.extend_from_slice(&bin[0..5]),
+            19 => bcode.extend_from_slice(&bin[0..5]),
+            20 => bcode.extend_from_slice(&bin[0..5]),
+            21 => bcode.extend_from_slice(&bin[0..5]),
+            22 => bcode.extend_from_slice(&bin[0..5]),
+            23 => bcode.extend_from_slice(&bin[0..3]),
+            _ => unreachable!(),
+        }
+    }
+    bcode
+}
 pub fn assemble(inst: &NoLabelInst) -> [u8; 6] {
     let mut inst_slice: [u8; 6] = [0; 6];
     match inst {
