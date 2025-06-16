@@ -1,13 +1,15 @@
 use repl::Repl;
 
 // frontend
-mod ast;
 mod lexer;
-mod parser;
 mod tokens;
+mod parser;
+mod ast;
 // backend
-mod bytecode;
 mod codegen;
+mod asm;
+mod assembler;
+mod bytecode;
 mod vm;
 // optimize
 // mod optimizing;
