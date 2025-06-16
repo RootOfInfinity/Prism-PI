@@ -102,4 +102,5 @@ pub fn to_le_bytes(inst: Instruction) -> [u8; 6] {
               inst_slice[4] = x[3];
           }
       }
+      inst_slice
 }
