@@ -1,6 +1,6 @@
 use super::asm::Instruction;
 //formatting will be fixed later
-pub fn to_le_bytes(inst: Instruction) -> [u8; 6] {
+pub fn to_le_bytes(inst: &Instruction) -> [u8; 6] {
       let mut inst_slice: [u8; 6] = [0; 6];
       match inst {
           &Instruction::Ret => inst_slice[0] = 1u8,
