@@ -1,13 +1,15 @@
 use super::tokens::{Literal, Operator, Type};
 
+#[derive(Clone)]
 pub struct FunctionAst {
-    loc: Loc,
-    name: String,
-    params: Vec<(Type, String)>,
-    code: Vec<Statement>,
-    ret_type: Type,
+    pub loc: Loc,
+    pub name: String,
+    pub params: Vec<(Type, String)>,
+    pub code: Vec<Statement>,
+    pub ret_type: Type,
 }
 
+#[derive(Clone)]
 pub enum ExprAST {
     Var(String),
     Lit(Literal),
@@ -15,6 +17,7 @@ pub enum ExprAST {
     Call(String, Vec<ExprAST>),
 }
 
+#[derive(Clone)]
 pub enum Statement {
     Expr(Expression),
     Decl(Declaration),
@@ -24,6 +27,7 @@ pub enum Statement {
     Return(Return),
 }
 
+#[derive(Clone)]
 pub struct Declaration {
     pub typ: Type,
     pub ident: String,
@@ -32,30 +36,35 @@ pub struct Declaration {
     pub val_loc: Loc,
 }
 
+#[derive(Clone)]
 pub struct Expression {
     pub expr: ExprAST,
     pub loc: Loc,
 }
 
+#[derive(Clone)]
 pub struct Assignment {
     pub ident: String,
     pub ident_loc: Loc,
-    pub val: Literal,
+    pub val: ExprAST,
     pub val_loc: Loc,
 }
 
+#[derive(Clone)]
 pub struct IfBlock {
     pub cond: Expression,
     pub loc: Loc,
     pub code: Vec<Statement>,
 }
 
+#[derive(Clone)]
 pub struct WhileBlock {
     pub cond: Expression,
     pub loc: Loc,
     pub code: Vec<Statement>,
 }
 
+#[derive(Clone)]
 pub struct Return {
     pub expr: Expression,
     pub loc: Loc,
