@@ -54,7 +54,8 @@ pub struct Assignment {
 pub struct IfBlock {
     pub cond: Expression,
     pub loc: Loc,
-    pub code: Vec<Statement>,
+    pub tcode: Vec<Statement>,
+    pub ecode: Vec<Statement>,
 }
 
 #[derive(Clone)]

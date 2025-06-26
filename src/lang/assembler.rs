@@ -37,7 +37,7 @@ pub fn assemble_grp_efficent(asm_vec: Vec<NoLabelInst>) -> Vec<u8> {
 pub fn assemble(inst: &NoLabelInst) -> [u8; 6] {
     let mut inst_slice: [u8; 6] = [0; 6];
     match inst {
-        &NoLabelInst::Ret => inst_slice[0] = 1u8,
+        // &NoLabelInst::Ret => inst_slice[0] = 1u8,
         &NoLabelInst::Push(x1b, y2b) => {
             inst_slice[0] = 2u8;
             inst_slice[1] = x1b;

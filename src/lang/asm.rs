@@ -33,7 +33,7 @@ impl AsmFile {
                 Instruction::Jz(x) => NoLabelInst::Jz(*label_map.get(x).unwrap() as u32),
                 Instruction::Jnz(x) => NoLabelInst::Jnz(*label_map.get(x).unwrap() as u32),
                 Instruction::Call(x) => NoLabelInst::Call(*label_map.get(x).unwrap() as u32),
-                Instruction::Ret => NoLabelInst::Ret,
+                Instruction::Ret(x) => NoLabelInst::Ret(*x),
                 Instruction::Pop => NoLabelInst::Pop,
                 Instruction::Add => NoLabelInst::Add,
                 Instruction::Sub => NoLabelInst::Sub,
@@ -48,6 +48,7 @@ impl AsmFile {
                 Instruction::G => NoLabelInst::G,
                 Instruction::Ge => NoLabelInst::Ge,
                 Instruction::Push(x, y) => NoLabelInst::Push(*x, *y),
+                Instruction::Mov(x) => NoLabelInst::Mov(*x),
                 Instruction::Fun(x) => NoLabelInst::Fun(*x),
                 Instruction::Label(_) => unreachable!(),
             });
@@ -57,9 +58,10 @@ impl AsmFile {
 }
 //bytetext asm has labels
 pub enum Instruction {
-    Ret,
+    Ret(u16),
     Push(u8, u16),
     Pop,
+    Mov(u16),
     Add,
     Sub,
     Mul,
@@ -81,9 +83,10 @@ pub enum Instruction {
 }
 
 pub enum NoLabelInst {
-    Ret,
+    Ret(u16),
     Push(u8, u16),
     Pop,
+    Mov(u16),
     Add,
     Sub,
     Mul,

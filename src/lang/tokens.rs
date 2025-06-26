@@ -55,6 +55,17 @@ pub enum Type {
     Bool,
     String,
 }
+impl Type {
+    //size in bytes
+    pub fn size(&self) -> usize {
+        match self {
+            Type::Int => 4,
+            Type::Dcml => 8,
+            Type::Bool => 1,
+            Type::String => 2,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal {
@@ -62,6 +73,17 @@ pub enum Literal {
     Dcml(f64),
     Bool(bool),
     String(String),
+}
+impl Literal {
+    // gets type of lit
+    pub fn get_type(&self) -> Type {
+        match self {
+            Literal::Int(_) => Type::Int,
+            Literal::Dcml(_) => Type::Dcml,
+            Literal::Bool(_) => Type::Bool,
+            Literal::String(_) => Type::String,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
