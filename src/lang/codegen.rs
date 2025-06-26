@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::{
     asm::Instruction,
     ast::{ExprAST, FunctionAst, Statement},
-    tokens::Type,
+    tokens::{Literal, Type},
 };
 
 pub struct ActualFlippinCompiler {
@@ -29,6 +29,9 @@ impl ActualFlippinCompiler {
             self.add_consts_in_vec(func.code);
         }
     }
+    fn get_const(&self, lit: Literal) {
+        todo!()
+    }
     fn add_const_in_expr(&mut self, expr: ExprAST) {
         todo!()
     }
@@ -46,4 +49,14 @@ impl ActualFlippinCompiler {
         todo!()
     }
     fn func_gen(&mut self, func: FunctionAst) {}
+    fn compile_expr(&mut self, expr: ExprAST) {
+        match expr {
+            ExprAST::Var(x) => todo!(),
+            ExprAST::Lit(x) => {
+                let ind = self.get_const(x);
+                // self.code.push();
+            }
+            _ => todo!(),
+        }
+    }
 }
