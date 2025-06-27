@@ -169,54 +169,40 @@ impl ActualFlippinCompiler {
                 self.code.push(Instruction::Ret(self.get_sof_off()));
             }
             Statement::If(x) => {
+                let start_ip = self.code.len();
                 self.compile_expr(x.cond.expr);
-                self.code.push(Instruction::Jz(format!(
-                    "{}-if_{}_else",
-                    self.cur_func_name, self.cur_if
-                )));
+                self.code
+                    .push(Instruction::Jz(format!("if_{}_else", start_ip)));
                 self.code.push(Instruction::Pop);
                 for st in x.tcode {
                     self.compile_statement(st);
                 }
-                self.code.push(Instruction::Jmp(format!(
-                    "{}-if_{}_end",
-                    self.cur_func_name, self.cur_if
-                )));
-                self.code.push(Instruction::Label(format!(
-                    "{}-if_{}_else",
-                    self.cur_func_name, self.cur_if
-                )));
+                self.code
+                    .push(Instruction::Jmp(format!("if_{}_end", start_ip)));
+                self.code
+                    .push(Instruction::Label(format!("if_{}_else", start_ip)));
                 self.code.push(Instruction::Pop);
                 for st in x.ecode {
                     self.compile_statement(st);
                 }
-                self.code.push(Instruction::Label(format!(
-                    "{}-if_{}_end",
-                    self.cur_func_name, self.cur_if
-                )));
+                self.code
+                    .push(Instruction::Label(format!("if_{}_end", start_ip)));
             }
             Statement::While(x) => {
-                self.code.push(Instruction::Label(format!(
-                    "{}-while_{}",
-                    self.cur_func_name, self.cur_while
-                )));
+                let start_ip = self.code.len();
+                self.code
+                    .push(Instruction::Label(format!("while_{}", start_ip)));
                 self.compile_expr(x.cond.expr);
-                self.code.push(Instruction::Jz(format!(
-                    "{}-while_{}_end",
-                    self.cur_func_name, self.cur_while
-                )));
+                self.code
+                    .push(Instruction::Jz(format!("while_{}_end", start_ip)));
                 self.code.push(Instruction::Pop);
                 for st in x.code {
                     self.compile_statement(st);
                 }
-                self.code.push(Instruction::Jmp(format!(
-                    "{}-while_{}",
-                    self.cur_func_name, self.cur_while
-                )));
-                self.code.push(Instruction::Label(format!(
-                    "{}-while_{}_end",
-                    self.cur_func_name, self.cur_while
-                )));
+                self.code
+                    .push(Instruction::Jmp(format!("while_{}", start_ip)));
+                self.code
+                    .push(Instruction::Label(format!("while_{}_end", start_ip)));
             }
         }
     }
