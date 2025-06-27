@@ -39,9 +39,9 @@ pub enum Operator {
     Greater,
     GEq,
     // Logical
-    And,
-    Or,
-    Xor,
+    // And,
+    // Or,
+    // Xor,
     // Bitwise
     BAnd,
     BOr,

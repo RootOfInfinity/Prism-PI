@@ -95,7 +95,27 @@ impl ActualFlippinCompiler {
 
     // compiles an operator into a instruction like (Operator::Add) -> (Instruction::Add)
     // and pushes it into the code
-    fn compile_op(&mut self, op: Operator) {}
+    fn compile_op(&mut self, op: Operator) {
+        self.code.push(match op {
+            Operator::Add => Instruction::Add,
+            Operator::Sub => Instruction::Sub,
+            Operator::Mult => Instruction::Mul,
+            Operator::Div => Instruction::Div,
+            Operator::Mod => Instruction::Mod,
+            Operator::Eq => Instruction::Eq,
+            Operator::NEq => Instruction::Eq,
+            Operator::Less => Instruction::L,
+            Operator::LEq => Instruction::Le,
+            Operator::Greater => Instruction::G,
+            Operator::GEq => Instruction::Ge,
+            Operator::BAnd => Instruction::And,
+            Operator::BOr => Instruction::Or,
+            Operator::BXor => Instruction::Xor,
+        });
+        if let Operator::NEq = op {
+            self.code.push(Instruction::Not);
+        }
+    }
     // generate a function
     fn func_gen(&mut self, func: FunctionAst) {}
     fn track_var(&mut self) {}
