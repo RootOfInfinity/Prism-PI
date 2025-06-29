@@ -2,25 +2,19 @@ use super::tokens::Type;
 
 pub struct VM {
     ip: usize,
-    flag: i32,
     consts: (Vec<u8>, Vec<Type>),
     inst: Vec<u8>,
-    vars: (Vec<u8>, Vec<Type>),
-    comp_frames: Vec<(Vec<u8>, Vec<Type>)>,
+    stack: Vec<u8>,
     pool: Vec<String>,
-    call_frames: Vec<usize>,
 }
 impl VM {
     pub fn new(pool: Vec<String>, consts: (Vec<u8>, Vec<Type>), inst: Vec<u8>) -> Self {
         VM {
             ip: 0,
-            flag: 0,
             consts,
             inst,
-            vars: (Vec::new(), Vec::new()),
-            comp_frames: vec![(Vec::new(), Vec::new())],
             pool,
-            call_frames: Vec::new(),
+            stack: Vec::new(),
         }
     }
     pub fn execute_order_66(&mut self) -> i32 {

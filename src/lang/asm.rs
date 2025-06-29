@@ -14,6 +14,8 @@ impl AsmFile {
     pub fn extract_consts_and_pool(&self) -> (&(Vec<u8>, Vec<Type>), &Vec<String>) {
         (&self.consts, &self.pool)
     }
+    // THIS WONT WORK
+    // needs the BYTE INDEX, not the VEC INDEX
     pub fn remove_labels(&self) -> Vec<NoLabelInst> {
         let mut label_map: HashMap<&String, usize> = HashMap::new();
         let mut new_code: Vec<&Instruction> = Vec::new();

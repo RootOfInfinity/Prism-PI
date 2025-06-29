@@ -1,4 +1,3 @@
-use core::panic;
 use std::collections::HashMap;
 
 use super::{
@@ -7,28 +6,56 @@ use super::{
     tokens::{Literal, Operator, Type},
 };
 
-pub struct ActualFlippinCompiler {
+/// func compiler handles the trenches of the compiling stage
+/// the real variable declarations
+/// the expressions and statements
+/// the real stuff.
+struct FuncCompiler<'a> {
+    consts: &'a (Vec<u8>, Vec<Type>),
+    pool: &'a Vec<String>,
+    ret_types: &'a HashMap<String, Type>,
+    // ret_types tells it how much mem to allocate to stack_len
+    // when a call is given.
+    code: Vec<Instruction>,
+    func: FunctionAst,
+    var_tracker: HashMap<String, (u16, Type)>,
+    // SoF will always be zero
+    stack_len: u16,
+}
+
+/// Compiler Composer is the manager, it first takes the funcs,
+/// splits it up into threads that the func compilers will do seperatly.
+/// it also creates consts, the pool, and ret types for each
+/// before they are executed. After the compiling employees do their work,
+/// it will compose the codes into one stable code without labels, ready for
+/// serialization.
+/// It will only work with correct code, as error handling is done before this
+/// step.
+struct CompilerComposer {
     consts: (Vec<u8>, Vec<Type>),
     pool: Vec<String>,
     code: Vec<Instruction>,
     funcs: Vec<FunctionAst>,
-    cur_func_name: String,
-    cur_if: u32,
-    cur_while: u32,
 }
-impl ActualFlippinCompiler {
-    pub fn new(funcs: Vec<FunctionAst>) -> Self {
-        ActualFlippinCompiler {
-            consts: (vec![], vec![]),
-            pool: vec![],
-            code: vec![],
-            funcs,
-            cur_func_name: String::new(),
-            cur_if: 0,
-            cur_while: 0,
+
+impl<'a> FuncCompiler<'a> {
+    pub fn new(
+        consts: &'a (Vec<u8>, Vec<Type>),
+        pool: &'a Vec<String>,
+        ret_types: &'a HashMap<String, Type>,
+        func: FunctionAst,
+    ) -> Self {
+        FuncCompiler {
+            consts,
+            pool,
+            ret_types,
+            code: Vec::new(),
+            func,
+            var_tracker: HashMap::new(),
+            stack_len: 0,
         }
     }
-    fn get_const(&self, lit: Literal) -> u16 {
+    fn get_const(&self, lit: &Literal) -> u16 {
         let mut byte_ind: usize = 0;
         for t in self.consts.1.iter() {
             match t {
@@ -42,7 +69,7 @@ impl ActualFlippinCompiler {
                             .try_into()
                             .unwrap(),
                     );
-                    if find_int == int {
+                    if *find_int == int {
                         return byte_ind as u16;
                     }
                     byte_ind += t.size();
@@ -57,7 +84,7 @@ impl ActualFlippinCompiler {
                             .try_into()
                             .unwrap(),
                     );
-                    if find_dcml == dcml {
+                    if *find_dcml == dcml {
                         return byte_ind as u16;
                     }
                     byte_ind += t.size();
@@ -68,7 +95,7 @@ impl ActualFlippinCompiler {
                         continue;
                     };
                     let boolean = self.consts.0[byte_ind] != 0;
-                    if find_bool == boolean {
+                    if *find_bool == boolean {
                         return byte_ind as u16;
                     }
                     byte_ind += t.size();
@@ -92,7 +119,6 @@ impl ActualFlippinCompiler {
         }
         unreachable!("Couldn't find the constant needed");
     }
-
     // compiles an operator into a instruction like (Operator::Add) -> (Instruction::Add)
     // and pushes it into the code
     fn compile_op(&mut self, op: Operator) {
@@ -116,23 +142,28 @@ impl ActualFlippinCompiler {
             self.code.push(Instruction::Not);
         }
     }
-    // generate a function
-    fn func_gen(&mut self, func: FunctionAst) {}
-    fn track_var(&mut self) {}
-    // gets the offset from the top of the var ident passed in
-    fn get_var(&self, id: String) -> u16 {
-        todo!()
+    fn track_var(&mut self, id: String, typ: Type) {
+        // doesn't increment stack_top
+        let ind = self.stack_len;
+        self.var_tracker.insert(id, (ind as u16, typ));
     }
-    // gets the offset from the top of the start of the current function
-    fn get_sof_off(&self) -> u16 {
-        todo!()
+    // gets the offset from the top of the var ident passed in
+    fn get_var(&self, id: &String) -> (u16, Type) {
+        let vinfo = self.var_tracker.get(id).unwrap();
+        (self.stack_len as u16 - vinfo.0, vinfo.1.clone())
     }
     // recursively compiles the ExprAST and pushes it to self.code
     fn compile_expr(&mut self, expr: ExprAST) {
         match expr {
-            ExprAST::Var(x) => todo!(),
+            ExprAST::Var(x) => {
+                let vinfo = self.get_var(&x);
+                self.code.push(Instruction::Push(0, vinfo.0));
+                self.stack_len += vinfo.1.size() as u16;
+            } // find type of the var, and add memsize to stack
             ExprAST::Lit(x) => {
-                let ind = self.get_const(x);
+                let ind = self.get_const(&x);
+                let mem_size = x.get_type().size();
+                self.stack_len += mem_size as u16;
                 self.code.push(Instruction::Push(1, ind));
             }
             ExprAST::BinOp(op, x, y) => {
@@ -144,6 +175,7 @@ impl ActualFlippinCompiler {
                 for expr in x {
                     self.compile_expr(expr);
                 }
+                self.stack_len += self.ret_types.get(&s).unwrap().size() as u16;
                 self.code.push(Instruction::Call(s));
             }
         }
@@ -151,24 +183,29 @@ impl ActualFlippinCompiler {
     fn compile_statement(&mut self, statement: Statement) {
         match statement {
             Statement::Expr(x) => {
+                let stack_len_before_expr = self.stack_len;
                 self.compile_expr(x.expr);
                 self.code.push(Instruction::Pop);
+                self.stack_len = stack_len_before_expr;
             }
             Statement::Decl(x) => {
                 self.compile_expr(x.val);
-                self.track_var()
+                self.track_var(x.ident, x.typ);
             }
             Statement::Assign(x) => {
+                let stack_len_before_expr = self.stack_len;
                 self.compile_expr(x.val);
-                let offset = self.get_var(x.ident);
-                self.code.push(Instruction::Mov(offset));
+                let vinfo = self.get_var(&x.ident);
+                self.code.push(Instruction::Mov(vinfo.0));
                 self.code.push(Instruction::Pop);
+                self.stack_len = stack_len_before_expr;
             }
             Statement::Return(x) => {
                 self.compile_expr(x.expr.expr);
-                self.code.push(Instruction::Ret(self.get_sof_off()));
+                self.code.push(Instruction::Ret(self.stack_len as u16));
             }
             Statement::If(x) => {
+                let stack_len_before_expr = self.stack_len;
                 let start_ip = self.code.len();
                 self.compile_expr(x.cond.expr);
                 self.code
@@ -187,8 +224,10 @@ impl ActualFlippinCompiler {
                 }
                 self.code
                     .push(Instruction::Label(format!("if_{}_end", start_ip)));
+                self.stack_len = stack_len_before_expr;
             }
             Statement::While(x) => {
+                let stack_len_before_expr = self.stack_len;
                 let start_ip = self.code.len();
                 self.code
                     .push(Instruction::Label(format!("while_{}", start_ip)));
@@ -203,7 +242,18 @@ impl ActualFlippinCompiler {
                     .push(Instruction::Jmp(format!("while_{}", start_ip)));
                 self.code
                     .push(Instruction::Label(format!("while_{}_end", start_ip)));
+                self.stack_len = stack_len_before_expr;
             }
+        }
+    }
+}
+impl CompilerComposer {
+    pub fn new(funcs: Vec<FunctionAst>) -> Self {
+        CompilerComposer {
+            consts: (Vec::new(), Vec::new()),
+            pool: Vec::new(),
+            code: Vec::new(),
+            funcs,
         }
     }
 }
