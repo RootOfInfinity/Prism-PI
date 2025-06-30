@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, mpsc},
+    thread,
+};
 
 use super::{
     asm::Instruction,
@@ -10,17 +14,18 @@ use super::{
 /// the real variable declarations
 /// the expressions and statements
 /// the real stuff.
-struct FuncCompiler<'a> {
-    consts: &'a (Vec<u8>, Vec<Type>),
-    pool: &'a Vec<String>,
-    ret_types: &'a HashMap<String, Type>,
-    // ret_types tells it how much mem to allocate to stack_len
+struct FuncCompiler {
+    consts: Arc<(Vec<u8>, Vec<Type>)>,
+    pool: Arc<Vec<String>>,
+    ret_types: Arc<HashMap<String, Type>>,
+    // ret_types tells it how much mem to allocate to stack_top
     // when a call is given.
     code: Vec<Instruction>,
     func: FunctionAst,
     var_tracker: HashMap<String, (u16, Type)>,
     // SoF will always be zero
-    stack_len: u16,
+    stack_top: u16,
+    scoped_vars: Vec<u16>,
 }
 
 /// Compiler Composer is the manager, it first takes the funcs,
@@ -38,11 +43,11 @@ struct CompilerComposer {
     funcs: Vec<FunctionAst>,
 }
 
-impl<'a> FuncCompiler<'a> {
+impl FuncCompiler {
     pub fn new(
-        consts: &'a (Vec<u8>, Vec<Type>),
-        pool: &'a Vec<String>,
-        ret_types: &'a HashMap<String, Type>,
+        consts: Arc<(Vec<u8>, Vec<Type>)>,
+        pool: Arc<Vec<String>>,
+        ret_types: Arc<HashMap<String, Type>>,
         func: FunctionAst,
     ) -> Self {
         FuncCompiler {
@@ -52,7 +57,8 @@ impl<'a> FuncCompiler<'a> {
             code: Vec::new(),
             func,
             var_tracker: HashMap::new(),
-            stack_len: 0,
+            stack_top: 0,
+            scoped_vars: vec![0],
         }
     }
     fn get_const(&self, lit: &Literal) -> u16 {
@@ -144,13 +150,13 @@ impl<'a> FuncCompiler<'a> {
     }
     fn track_var(&mut self, id: String, typ: Type) {
         // doesn't increment stack_top
-        let ind = self.stack_len;
+        let ind = self.stack_top;
         self.var_tracker.insert(id, (ind as u16, typ));
     }
     // gets the offset from the top of the var ident passed in
     fn get_var(&self, id: &String) -> (u16, Type) {
         let vinfo = self.var_tracker.get(id).unwrap();
-        (self.stack_len as u16 - vinfo.0, vinfo.1.clone())
+        (self.stack_top as u16 - vinfo.0, vinfo.1.clone())
     }
     // recursively compiles the ExprAST and pushes it to self.code
     fn compile_expr(&mut self, expr: ExprAST) {
@@ -158,12 +164,12 @@ impl<'a> FuncCompiler<'a> {
             ExprAST::Var(x) => {
                 let vinfo = self.get_var(&x);
                 self.code.push(Instruction::Push(0, vinfo.0));
-                self.stack_len += vinfo.1.size() as u16;
+                self.stack_top += vinfo.1.size() as u16;
             } // find type of the var, and add memsize to stack
             ExprAST::Lit(x) => {
                 let ind = self.get_const(&x);
                 let mem_size = x.get_type().size();
-                self.stack_len += mem_size as u16;
+                self.stack_top += mem_size as u16;
                 self.code.push(Instruction::Push(1, ind));
             }
             ExprAST::BinOp(op, x, y) => {
@@ -175,7 +181,7 @@ impl<'a> FuncCompiler<'a> {
                 for expr in x {
                     self.compile_expr(expr);
                 }
-                self.stack_len += self.ret_types.get(&s).unwrap().size() as u16;
+                self.stack_top += self.ret_types.get(&s).unwrap().size() as u16;
                 self.code.push(Instruction::Call(s));
             }
         }
@@ -183,68 +189,127 @@ impl<'a> FuncCompiler<'a> {
     fn compile_statement(&mut self, statement: Statement) {
         match statement {
             Statement::Expr(x) => {
-                let stack_len_before_expr = self.stack_len;
+                let stack_top_before_expr = self.stack_top;
                 self.compile_expr(x.expr);
                 self.code.push(Instruction::Pop);
-                self.stack_len = stack_len_before_expr;
+                self.stack_top = stack_top_before_expr;
             }
             Statement::Decl(x) => {
                 self.compile_expr(x.val);
                 self.track_var(x.ident, x.typ);
+                let len = self.scoped_vars.len();
+                self.scoped_vars[len - 1] += 1;
             }
             Statement::Assign(x) => {
-                let stack_len_before_expr = self.stack_len;
+                let stack_top_before_expr = self.stack_top;
                 self.compile_expr(x.val);
                 let vinfo = self.get_var(&x.ident);
                 self.code.push(Instruction::Mov(vinfo.0));
                 self.code.push(Instruction::Pop);
-                self.stack_len = stack_len_before_expr;
+                self.stack_top = stack_top_before_expr;
             }
             Statement::Return(x) => {
                 self.compile_expr(x.expr.expr);
-                self.code.push(Instruction::Ret(self.stack_len as u16));
+                self.code.push(Instruction::Ret(self.stack_top as u16));
             }
             Statement::If(x) => {
-                let stack_len_before_expr = self.stack_len;
+                let stack_top_before_expr = self.stack_top;
                 let start_ip = self.code.len();
                 self.compile_expr(x.cond.expr);
-                self.code
-                    .push(Instruction::Jz(format!("if_{}_else", start_ip)));
+                self.code.push(Instruction::Jz(format!(
+                    "{}-if_{}_else",
+                    self.func.name, start_ip
+                )));
                 self.code.push(Instruction::Pop);
+                // scope start
+                self.scoped_vars.push(0);
                 for st in x.tcode {
                     self.compile_statement(st);
                 }
-                self.code
-                    .push(Instruction::Jmp(format!("if_{}_end", start_ip)));
-                self.code
-                    .push(Instruction::Label(format!("if_{}_else", start_ip)));
+                self.pop_the_scope();
+                // scope end
+
+                self.code.push(Instruction::Jmp(format!(
+                    "{}-if_{}_end",
+                    self.func.name, start_ip
+                )));
+                self.code.push(Instruction::Label(format!(
+                    "{}-if_{}_else",
+                    self.func.name, start_ip
+                )));
                 self.code.push(Instruction::Pop);
+
+                self.scoped_vars.push(0);
                 for st in x.ecode {
                     self.compile_statement(st);
                 }
-                self.code
-                    .push(Instruction::Label(format!("if_{}_end", start_ip)));
-                self.stack_len = stack_len_before_expr;
+                self.pop_the_scope();
+
+                self.code.push(Instruction::Label(format!(
+                    "{}-if_{}_end",
+                    self.func.name, start_ip
+                )));
+                self.stack_top = stack_top_before_expr;
             }
             Statement::While(x) => {
-                let stack_len_before_expr = self.stack_len;
+                let stack_top_before_expr = self.stack_top;
                 let start_ip = self.code.len();
-                self.code
-                    .push(Instruction::Label(format!("while_{}", start_ip)));
+                self.code.push(Instruction::Label(format!(
+                    "{}-while_{}",
+                    self.func.name, start_ip
+                )));
                 self.compile_expr(x.cond.expr);
-                self.code
-                    .push(Instruction::Jz(format!("while_{}_end", start_ip)));
+                self.code.push(Instruction::Jz(format!(
+                    "{}-while_{}_end",
+                    self.func.name, start_ip
+                )));
                 self.code.push(Instruction::Pop);
+
+                self.scoped_vars.push(0);
                 for st in x.code {
                     self.compile_statement(st);
                 }
-                self.code
-                    .push(Instruction::Jmp(format!("while_{}", start_ip)));
-                self.code
-                    .push(Instruction::Label(format!("while_{}_end", start_ip)));
-                self.stack_len = stack_len_before_expr;
+                self.pop_the_scope();
+
+                self.code.push(Instruction::Jmp(format!(
+                    "{}-while_{}",
+                    self.func.name, start_ip
+                )));
+                self.code.push(Instruction::Label(format!(
+                    "{}-while_{}_end",
+                    self.func.name, start_ip
+                )));
+                self.stack_top = stack_top_before_expr;
             }
         }
+    }
+    fn pop_the_scope(&mut self) {
+        for _ in 0..self.scoped_vars[self.scoped_vars.len() - 1] {
+            self.code.push(Instruction::Pop);
+        }
+        self.scoped_vars.pop();
+    }
+    pub fn compile(mut self) -> Vec<Instruction> {
+        let mut cur_byte_offset = 0;
+        let mut from_top = Vec::new();
+        for arg in self.func.params.iter().rev() {
+            from_top.push(cur_byte_offset);
+            cur_byte_offset += arg.1.size();
+        }
+        let bottom_off = cur_byte_offset + self.func.params[0].1.size();
+        let stack_top = cur_byte_offset + self.func.params[0].1.size() - 1;
+        for ind in from_top.iter_mut().rev() {
+            *ind = stack_top - *ind;
+        }
+        for ((id, typ), ind) in self.func.params.iter().zip(from_top.iter()) {
+            self.var_tracker
+                .insert(id.clone(), (*ind as u16, typ.clone()));
+        }
+        self.stack_top = stack_top as u16;
+        for st in self.func.code.clone() {
+            self.compile_statement(st);
+        }
+        self.code
     }
 }
 impl CompilerComposer {
@@ -255,5 +320,38 @@ impl CompilerComposer {
             code: Vec::new(),
             funcs,
         }
+    }
+    pub fn parallel_compile(&self) -> Vec<Instruction> {
+        let mut ret_types = HashMap::new();
+        for f in self.funcs.iter() {
+            ret_types.insert(f.name.clone(), f.ret_type.clone());
+        }
+        let arc_consts = Arc::new(self.consts.clone());
+        let arc_pool = Arc::new(self.pool.clone());
+        let arc_ret = Arc::new(ret_types);
+        let (tx, rx) = mpsc::channel();
+        let mut handles = Vec::new();
+
+        for func in self.funcs.clone() {
+            let consts = Arc::clone(&arc_consts);
+            let pool = Arc::clone(&arc_pool);
+            let ret_types = Arc::clone(&arc_ret);
+            let tx1 = tx.clone();
+            handles.push(thread::spawn(move || {
+                let f = &func;
+                let f = f.clone();
+                let factory = FuncCompiler::new(consts, pool, ret_types, f);
+                tx1.send(factory.compile())
+                    .expect("emergency failure to send");
+            }));
+        }
+        for handle in handles {
+            handle.join().expect("failed thread");
+        }
+        let mut all_instructions = Vec::new();
+        for mut recieved in rx {
+            all_instructions.append(&mut recieved);
+        }
+        all_instructions
     }
 }

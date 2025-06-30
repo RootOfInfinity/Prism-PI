@@ -4,7 +4,7 @@ use super::tokens::{Literal, Operator, Type};
 pub struct FunctionAst {
     pub loc: Loc,
     pub name: String,
-    pub params: Vec<(Type, String)>,
+    pub params: Vec<(String, Type)>,
     pub code: Vec<Statement>,
     pub ret_type: Type,
 }
