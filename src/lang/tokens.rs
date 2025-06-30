@@ -50,10 +50,10 @@ pub enum Operator {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
-    Int,
-    Dcml,
-    Bool,
-    String,
+    Int,    // 1
+    Dcml,   // 2
+    Bool,   // 3
+    String, // 4
 }
 impl Type {
     //size in bytes

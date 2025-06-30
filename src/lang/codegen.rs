@@ -6,7 +6,7 @@ use std::{
 
 use super::{
     asm::Instruction,
-    ast::{ExprAST, FunctionAst, Statement},
+    ast::{Assignment, ExprAST, FunctionAst, Statement},
     tokens::{Literal, Operator, Type},
 };
 
@@ -61,9 +61,13 @@ impl FuncCompiler {
             scoped_vars: vec![0],
         }
     }
-    fn get_const(&self, lit: &Literal) -> u16 {
+    pub fn get_const(
+        consts: &(Vec<u8>, Vec<Type>),
+        pool: &Vec<String>,
+        lit: &Literal,
+    ) -> Option<u16> {
         let mut byte_ind: usize = 0;
-        for t in self.consts.1.iter() {
+        for t in consts.1.iter() {
             match t {
                 Type::Int => {
                     let Literal::Int(find_int) = lit else {
@@ -71,12 +75,12 @@ impl FuncCompiler {
                         continue;
                     };
                     let int = i32::from_le_bytes(
-                        self.consts.0[byte_ind..(byte_ind + t.size())]
+                        consts.0[byte_ind..(byte_ind + t.size() - 1)]
                             .try_into()
                             .unwrap(),
                     );
                     if *find_int == int {
-                        return byte_ind as u16;
+                        return Some(byte_ind as u16);
                     }
                     byte_ind += t.size();
                 }
@@ -86,12 +90,12 @@ impl FuncCompiler {
                         continue;
                     };
                     let dcml = f64::from_le_bytes(
-                        self.consts.0[byte_ind..(byte_ind + t.size())]
+                        consts.0[byte_ind..(byte_ind + t.size() - 1)]
                             .try_into()
                             .unwrap(),
                     );
                     if *find_dcml == dcml {
-                        return byte_ind as u16;
+                        return Some(byte_ind as u16);
                     }
                     byte_ind += t.size();
                 }
@@ -100,9 +104,9 @@ impl FuncCompiler {
                         byte_ind += t.size();
                         continue;
                     };
-                    let boolean = self.consts.0[byte_ind] != 0;
+                    let boolean = consts.0[byte_ind] != 0;
                     if *find_bool == boolean {
-                        return byte_ind as u16;
+                        return Some(byte_ind as u16);
                     }
                     byte_ind += t.size();
                 }
@@ -112,18 +116,18 @@ impl FuncCompiler {
                         continue;
                     };
                     let str_ind = u16::from_le_bytes(
-                        self.consts.0[byte_ind..(byte_ind + t.size())]
+                        consts.0[byte_ind..(byte_ind + t.size() - 1)]
                             .try_into()
                             .unwrap(),
                     ) as usize;
-                    if find_string == self.pool[str_ind] {
-                        return byte_ind as u16;
+                    if find_string == pool[str_ind] {
+                        return Some(byte_ind as u16);
                     }
                     byte_ind += t.size();
                 }
             };
         }
-        unreachable!("Couldn't find the constant needed");
+        None
     }
     // compiles an operator into a instruction like (Operator::Add) -> (Instruction::Add)
     // and pushes it into the code
@@ -167,7 +171,7 @@ impl FuncCompiler {
                 self.stack_top += vinfo.1.size() as u16;
             } // find type of the var, and add memsize to stack
             ExprAST::Lit(x) => {
-                let ind = self.get_const(&x);
+                let ind = FuncCompiler::get_const(&self.consts, &self.pool, &x).unwrap();
                 let mem_size = x.get_type().size();
                 self.stack_top += mem_size as u16;
                 self.code.push(Instruction::Push(1, ind));
@@ -319,6 +323,84 @@ impl CompilerComposer {
             pool: Vec::new(),
             code: Vec::new(),
             funcs,
+        }
+    }
+    fn create_constants(&mut self) {
+        for func in self.funcs.clone() {
+            self.create_consts_in_codevec(func.code);
+        }
+    }
+    fn create_consts_in_codevec(&mut self, statements: Vec<Statement>) {
+        for statement in statements {
+            match statement {
+                Statement::Expr(ex) => {
+                    self.create_consts_in_expr(ex.expr);
+                }
+                Statement::Decl(dec) => {
+                    self.create_consts_in_expr(dec.val);
+                }
+                Statement::Assign(assign) => {
+                    self.create_consts_in_expr(assign.val);
+                }
+                Statement::If(iffy) => {
+                    self.create_consts_in_expr(iffy.cond.expr);
+                    self.create_consts_in_codevec(iffy.tcode);
+                    self.create_consts_in_codevec(iffy.ecode);
+                }
+                Statement::While(wh) => {
+                    self.create_consts_in_expr(wh.cond.expr);
+                    self.create_consts_in_codevec(wh.code);
+                }
+                Statement::Return(ret) => {
+                    self.create_consts_in_expr(ret.expr.expr);
+                }
+            }
+        }
+    }
+    fn create_consts_in_expr(&mut self, expr: ExprAST) {
+        match expr {
+            ExprAST::Lit(lit) => self.add_const(&lit),
+            ExprAST::Var(_) => (),
+            ExprAST::BinOp(_, ex0, ex1) => {
+                self.create_consts_in_expr(*ex0);
+                self.create_consts_in_expr(*ex1);
+            }
+            ExprAST::Call(_, exvec) => {
+                for ex in exvec {
+                    self.create_consts_in_expr(ex);
+                }
+            }
+        }
+    }
+    fn add_const(&mut self, lit: &Literal) {
+        match FuncCompiler::get_const(&self.consts, &self.pool, &lit) {
+            Some(_) => (),
+            None => {
+                self.consts.1.push(lit.get_type());
+                match lit {
+                    Literal::Int(int) => {
+                        let by_arr = int.to_le_bytes();
+                        self.consts.0.extend_from_slice(&by_arr);
+                        self.consts.0.push(1);
+                    }
+                    Literal::Dcml(dcml) => {
+                        let by_arr = dcml.to_le_bytes();
+                        self.consts.0.extend_from_slice(&by_arr);
+                        self.consts.0.push(2);
+                    }
+                    Literal::Bool(boolean) => {
+                        self.consts.0.push(*boolean as u8);
+                        self.consts.0.push(3);
+                    }
+                    Literal::String(string) => {
+                        self.pool.push(string.clone());
+                        let ind = self.pool.len() - 1;
+                        let by_arr = (ind as u16).to_le_bytes();
+                        self.consts.0.extend_from_slice(&by_arr);
+                        self.consts.0.push(4);
+                    }
+                }
+            }
         }
     }
     pub fn parallel_compile(&self) -> Vec<Instruction> {
