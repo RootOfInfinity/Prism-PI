@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use super::tokens::Type;
 
@@ -86,6 +86,77 @@ pub enum Instruction {
     Call(String),
     Fun(u16),
     Label(String),
+}
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ans = String::new();
+        let mut others = Vec::new();
+        ans += match self {
+            Instruction::Ret(x) => {
+                others.push(x.to_string());
+                "ret"
+            }
+            Instruction::Push(x, y) => {
+                others.push(x.to_string());
+                others.push(y.to_string());
+                "push"
+            }
+            Instruction::Pop => "pop",
+            Instruction::Mov(x) => {
+                others.push(x.to_string());
+                "mov"
+            }
+            Instruction::Add => "add",
+            Instruction::Sub => "sub",
+            Instruction::Mul => "mul",
+            Instruction::Div => "div",
+            Instruction::Mod => "mod",
+            Instruction::And => "and",
+            Instruction::Or => "or",
+            Instruction::Not => "not",
+            Instruction::Xor => "xor",
+            Instruction::Eq => "eq",
+            Instruction::L => "l",
+            Instruction::Le => "le",
+            Instruction::G => "g",
+            Instruction::Ge => "ge",
+            Instruction::Jmp(s) => {
+                others.push(s.clone());
+                "jmp"
+            }
+            Instruction::Jz(s) => {
+                others.push(s.clone());
+                "jz"
+            }
+            Instruction::Jnz(s) => {
+                others.push(s.clone());
+                "jnz"
+            }
+            Instruction::Call(s) => {
+                others.push(s.clone());
+                "call"
+            }
+            Instruction::Label(s) => {
+                others.push(s.clone());
+                "label"
+            }
+            Instruction::Fun(x) => {
+                others.push(x.to_string());
+                "fun"
+            }
+        };
+        for thing in others {
+            ans += " ";
+            ans.push_str(&thing);
+        }
+        write!(f, "{}", ans)
+    }
+}
+
+pub fn print_instructions(inst_vec: Vec<Instruction>) {
+    for (i, inst) in inst_vec.iter().enumerate() {
+        println!("{} -- {}", i, inst);
+    }
 }
 
 pub enum NoLabelInst {
