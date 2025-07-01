@@ -61,6 +61,7 @@ impl AsmFile {
     }
 }
 //bytetext asm has labels
+#[derive(Debug)]
 pub enum Instruction {
     Ret(u16),
     Push(u8, u16),
@@ -153,7 +154,8 @@ impl fmt::Display for Instruction {
     }
 }
 
-pub fn print_instructions(inst_vec: Vec<Instruction>) {
+pub fn print_instructions(inst_vec: &Vec<Instruction>) {
+    println!("INSTRUCTIONS:");
     for (i, inst) in inst_vec.iter().enumerate() {
         println!("{} -- {}", i, inst);
     }

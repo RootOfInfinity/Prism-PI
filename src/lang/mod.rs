@@ -1,15 +1,19 @@
+use asm::print_instructions;
+use ast::{ExprAST, Expression, FunctionAst, Loc, Statement};
+use codegen::{CompilerComposer, FuncCompiler};
 use repl::Repl;
+use tokens::{Literal, Type};
 
 // frontend
-mod lexer;
-mod tokens;
-mod parser;
 mod ast;
+mod lexer;
+mod parser;
+mod tokens;
 // backend
-mod codegen;
 mod asm;
 mod assembler;
 mod bytecode;
+mod codegen;
 mod vm;
 // optimize
 // mod optimizing;
@@ -21,6 +25,19 @@ mod repl;
 pub fn run_lang_test() {
     // run tests for lang
     println!("lang stuff");
-    let repl = Repl::new(true, false, false, false, false);
-    repl.start();
+    let func = FunctionAst {
+        loc: Loc::new(0, 0),
+        name: "main".to_string(),
+        params: vec![],
+        code: vec![Statement::Return(ast::Return {
+            expr: Expression {
+                expr: ExprAST::Lit(Literal::Int(0)),
+                loc: Loc::new(0, 0),
+            },
+            loc: Loc::new(0, 0),
+        })],
+        ret_type: Type::Int,
+    };
+    let func_runner = CompilerComposer::new(vec![func]);
+    print_instructions(&func_runner.parallel_compile());
 }

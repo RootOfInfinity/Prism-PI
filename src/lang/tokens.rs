@@ -56,14 +56,14 @@ pub enum Type {
     String, // 4
 }
 impl Type {
-    //size in bytes
+    //size in bytes including tag at end
     pub fn size(&self) -> usize {
-        match self {
+        (match self {
             Type::Int => 4,
             Type::Dcml => 8,
             Type::Bool => 1,
             Type::String => 2,
-        }
+        }) + 1
     }
 }
 

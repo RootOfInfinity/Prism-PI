@@ -4,6 +4,8 @@ use std::{
     thread,
 };
 
+use crate::lang::asm::print_instructions;
+
 use super::{
     asm::Instruction,
     ast::{Assignment, ExprAST, FunctionAst, Statement},
@@ -14,7 +16,7 @@ use super::{
 /// the real variable declarations
 /// the expressions and statements
 /// the real stuff.
-struct FuncCompiler {
+pub struct FuncCompiler {
     consts: Arc<(Vec<u8>, Vec<Type>)>,
     pool: Arc<Vec<String>>,
     ret_types: Arc<HashMap<String, Type>>,
@@ -36,7 +38,7 @@ struct FuncCompiler {
 /// serialization.
 /// It will only work with correct code, as error handling is done before this
 /// step.
-struct CompilerComposer {
+pub struct CompilerComposer {
     consts: (Vec<u8>, Vec<Type>),
     pool: Vec<String>,
     code: Vec<Instruction>,
@@ -300,8 +302,12 @@ impl FuncCompiler {
             from_top.push(cur_byte_offset);
             cur_byte_offset += arg.1.size();
         }
-        let bottom_off = cur_byte_offset + self.func.params[0].1.size();
-        let stack_top = cur_byte_offset + self.func.params[0].1.size() - 1;
+        let stack_top;
+        if self.func.params.len() > 0 {
+            stack_top = cur_byte_offset + self.func.params[0].1.size() - 1;
+        } else {
+            stack_top = 0;
+        }
         for ind in from_top.iter_mut().rev() {
             *ind = stack_top - *ind;
         }
@@ -313,18 +319,24 @@ impl FuncCompiler {
         for st in self.func.code.clone() {
             self.compile_statement(st);
         }
+        println!("{} - compiled.", self.func.name);
         self.code
     }
 }
 impl CompilerComposer {
     pub fn new(funcs: Vec<FunctionAst>) -> Self {
-        CompilerComposer {
+        let mut init = CompilerComposer {
             consts: (Vec::new(), Vec::new()),
             pool: Vec::new(),
             code: Vec::new(),
             funcs,
-        }
+        };
+        println!("Creating constants . . .");
+        init.create_constants();
+        println!("Created Constants");
+        init
     }
+
     fn create_constants(&mut self) {
         for func in self.funcs.clone() {
             self.create_consts_in_codevec(func.code);
@@ -414,6 +426,7 @@ impl CompilerComposer {
         let (tx, rx) = mpsc::channel();
         let mut handles = Vec::new();
 
+        println!("Assigning threads to functions");
         for func in self.funcs.clone() {
             let consts = Arc::clone(&arc_consts);
             let pool = Arc::clone(&arc_pool);
@@ -423,16 +436,15 @@ impl CompilerComposer {
                 let f = &func;
                 let f = f.clone();
                 let factory = FuncCompiler::new(consts, pool, ret_types, f);
-                tx1.send(factory.compile())
-                    .expect("emergency failure to send");
+                let inst_vec = factory.compile();
+                tx1.send(inst_vec).expect("emergency failure to send");
             }));
         }
+        let mut all_instructions: Vec<Instruction> = Vec::new();
         for handle in handles {
-            handle.join().expect("failed thread");
-        }
-        let mut all_instructions = Vec::new();
-        for mut recieved in rx {
-            all_instructions.append(&mut recieved);
+            handle.join().unwrap();
+            let mut rec = rx.recv().unwrap();
+            all_instructions.append(&mut rec);
         }
         all_instructions
     }
