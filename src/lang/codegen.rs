@@ -27,7 +27,7 @@ pub struct FuncCompiler {
     var_tracker: HashMap<String, (u16, Type)>,
     // SoF will always be zero
     stack_top: u16,
-    scoped_vars: Vec<u16>,
+    scoped_vars: Vec<(u16, u16)>,
 }
 
 /// Compiler Composer is the manager, it first takes the funcs,
@@ -60,7 +60,7 @@ impl FuncCompiler {
             func,
             var_tracker: HashMap::new(),
             stack_top: 0,
-            scoped_vars: vec![0],
+            scoped_vars: vec![(0, 0)],
         }
     }
     pub fn get_const(
@@ -127,6 +127,7 @@ impl FuncCompiler {
                     }
                     byte_ind += t.size();
                 }
+                Type::CallStack => (),
             };
         }
         None
@@ -202,9 +203,10 @@ impl FuncCompiler {
             }
             Statement::Decl(x) => {
                 self.compile_expr(x.val);
-                self.track_var(x.ident, x.typ);
                 let len = self.scoped_vars.len();
-                self.scoped_vars[len - 1] += 1;
+                self.scoped_vars[len - 1].1 += x.typ.size() as u16;
+                self.track_var(x.ident, x.typ);
+                self.scoped_vars[len - 1].0 += 1;
             }
             Statement::Assign(x) => {
                 let stack_top_before_expr = self.stack_top;
@@ -217,6 +219,7 @@ impl FuncCompiler {
             Statement::Return(x) => {
                 self.compile_expr(x.expr.expr);
                 self.code.push(Instruction::Ret(self.stack_top as u16));
+                // it tells the vm to go down by that much in the stack
             }
             Statement::If(x) => {
                 let stack_top_before_expr = self.stack_top;
@@ -228,7 +231,7 @@ impl FuncCompiler {
                 )));
                 self.code.push(Instruction::Pop);
                 // scope start
-                self.scoped_vars.push(0);
+                self.scoped_vars.push((0, 0));
                 for st in x.tcode {
                     self.compile_statement(st);
                 }
@@ -245,7 +248,7 @@ impl FuncCompiler {
                 )));
                 self.code.push(Instruction::Pop);
 
-                self.scoped_vars.push(0);
+                self.scoped_vars.push((0, 0));
                 for st in x.ecode {
                     self.compile_statement(st);
                 }
@@ -271,7 +274,7 @@ impl FuncCompiler {
                 )));
                 self.code.push(Instruction::Pop);
 
-                self.scoped_vars.push(0);
+                self.scoped_vars.push((0, 0));
                 for st in x.code {
                     self.compile_statement(st);
                 }
@@ -290,9 +293,10 @@ impl FuncCompiler {
         }
     }
     fn pop_the_scope(&mut self) {
-        for _ in 0..self.scoped_vars[self.scoped_vars.len() - 1] {
+        for _ in 0..self.scoped_vars[self.scoped_vars.len() - 1].0 {
             self.code.push(Instruction::Pop);
         }
+        self.stack_top -= self.scoped_vars[self.scoped_vars.len() - 1].1;
         self.scoped_vars.pop();
     }
     pub fn compile(mut self) -> Vec<Instruction> {
@@ -316,6 +320,8 @@ impl FuncCompiler {
                 .insert(id.clone(), (*ind as u16, typ.clone()));
         }
         self.stack_top = stack_top as u16;
+        self.code
+            .push(Instruction::Fun(self.func.params.len() as u16));
         for st in self.func.code.clone() {
             self.compile_statement(st);
         }

@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 
-use super::ast::{Declaration, Expression};
+use crate::lang::ast::Assignment;
+
+use super::ast::{Declaration, Expression, IfBlock, Return, WhileBlock};
 
 use super::tokens::Operator;
 use super::{
@@ -14,6 +16,7 @@ pub struct ParsingMachine {
     tok_vec: VecDeque<(Token, Loc)>,
     finished: bool,
 }
+// TODO primary, expression, function
 impl ParsingMachine {
     pub fn new(all_tha_tokens: Vec<(Token, Loc)>) -> Option<Self> {
         if all_tha_tokens.len() < 1 {
@@ -77,7 +80,8 @@ impl ParsingMachine {
                     self.cur_tok.1.col,
                 ));
             };
-            self.eat_tok(); // eats the ident
+            self.eat_tok();
+            /// eats the ident
             peram_vec.push((typ, arg_name));
             match self.cur_tok.0 {
                 Token::Comma => {
@@ -97,9 +101,7 @@ impl ParsingMachine {
 
         todo!()
     }
-    fn collect_curly_statements(
-        &mut self,
-    ) -> Result<Vec<Result<Statement, CompileError>>, CompileError> {
+    fn collect_curly_statements(&mut self) -> Result<Vec<Statement>, CompileError> {
         if !matches!(self.cur_tok.0, Token::LeftCurly) {
             return Err(CompileError::new(
                 ErrorType::ParsingError,
@@ -108,20 +110,88 @@ impl ParsingMachine {
             ));
         }
         self.eat_tok(); // eat left curly
-        let mut state_vec: Vec<Result<Statement, CompileError>> = Vec::new();
+        let mut state_vec: Vec<Statement> = Vec::new();
         while !matches!(self.cur_tok.0, Token::RightCurly) {
-            let statement = self.parse_statement();
+            let statement = self.parse_statement()?;
             state_vec.push(statement);
         }
-        self.eat_tok();
+        self.eat_tok(); // eats right curly
         Ok(state_vec)
     }
     fn parse_statement(&mut self) -> Result<Statement, CompileError> {
         match self.cur_tok.0 {
             Token::DeclareType(_) => self.parse_decl(),
+            Token::Ident(_) => match self.peek_tok() {
+                Some(&(Token::LeftParen, _)) => Ok(Statement::Expr(self.parse_expression()?)),
+                Some(&(Token::Assign, _)) => self.parse_assign(),
+                _ => {
+                    return Err(CompileError::new(
+                        ErrorType::ParsingError,
+                        self.cur_tok.1.line,
+                        self.cur_tok.1.col,
+                    ));
+                }
+            },
+            Token::If => self.parse_if(),
+            Token::While => self.parse_while(),
+            Token::Return => Ok(Statement::Return(Return {
+                expr: self.parse_expression()?,
+                loc: self.cur_tok.1.clone(),
+            })),
             _ => todo!(),
         }
     }
+    fn parse_if(&mut self) -> Result<Statement, CompileError> {
+        let loc = self.cur_tok.1.clone();
+        self.eat_tok();
+        // ate the if
+        let cond = self.parse_expression()?;
+        let Token::LeftCurly = self.cur_tok.0 else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        let ecode;
+        if let Token::Else = self.cur_tok.0 {
+            self.eat_tok();
+            if let Token::LeftCurly = self.cur_tok.0 {
+                ecode = self.collect_curly_statements()?;
+            } else {
+                ecode = vec![self.parse_statement()?];
+            }
+        } else {
+            ecode = Vec::new();
+        }
+        let block = self.collect_curly_statements()?;
+        Ok(Statement::If(IfBlock {
+            cond,
+            loc,
+            tcode: block,
+            ecode,
+        }))
+    }
+    fn parse_while(&mut self) -> Result<Statement, CompileError> {
+        let loc = self.cur_tok.1.clone();
+        self.eat_tok();
+        // ate the while
+        let cond = self.parse_expression()?;
+        let Token::LeftCurly = self.cur_tok.0 else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        let block = self.collect_curly_statements()?;
+        Ok(Statement::While(WhileBlock {
+            cond,
+            loc,
+            code: block,
+        }))
+    }
+
     fn parse_decl(&mut self) -> Result<Statement, CompileError> {
         let Token::DeclareType(typ) = self.cur_tok.0.clone() else {
             unreachable!();
@@ -159,8 +229,36 @@ impl ParsingMachine {
             val_loc: expr.loc,
         }))
     }
+    fn parse_assign(&mut self) -> Result<Statement, CompileError> {
+        let (Token::Ident(name), id_loc) = self.cur_tok.clone() else {
+            unreachable!()
+        };
+        self.eat_tok();
+        let Token::Assign = self.cur_tok.0 else {
+            unreachable!()
+        };
+        self.eat_tok();
+        let v_loc = self.cur_tok.1.clone();
+        let expr = self.parse_expr()?;
+        let Token::Semicolon = self.cur_tok.0 else {
+            return Err(CompileError::new(
+                ErrorType::ParsingError,
+                self.cur_tok.1.line,
+                self.cur_tok.1.col,
+            ));
+        };
+        Ok(Statement::Assign(Assignment {
+            ident: name,
+            ident_loc: id_loc,
+            val: expr,
+            val_loc: v_loc,
+        }))
+    }
     fn parse_expression(&mut self) -> Result<Expression, CompileError> {
-        todo!()
+        Ok(Expression {
+            expr: self.parse_expr()?,
+            loc: self.cur_tok.1.clone(),
+        })
     }
     fn parse_expr(&mut self) -> Result<ExprAST, CompileError> {
         let lhs = self.parse_primary()?;
@@ -188,7 +286,19 @@ impl ParsingMachine {
         }
     }
     fn parse_primary(&mut self) -> Result<ExprAST, CompileError> {
-        todo!()
+        match &self.cur_tok.0 {
+            Token::Ident(_) => (),
+            Token::Lit(_) => (),
+            Token::LeftParen => (),
+            _ => {
+                return Err(CompileError {
+                    e_type: ErrorType::LexingError,
+                    line: self.cur_tok.1.line,
+                    col: self.cur_tok.1.col,
+                });
+            }
+        }
+        Ok(ExprAST::Var("lol".to_string()))
     }
 
     fn eat_tok(&mut self) {

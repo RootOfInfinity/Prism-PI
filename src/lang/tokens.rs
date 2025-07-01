@@ -9,6 +9,7 @@ pub enum Token {
     DeclareType(Type),
     While,
     If,
+    Else,
     LeftParen,
     RightParen,
     LeftBrack,
@@ -50,10 +51,11 @@ pub enum Operator {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
-    Int,    // 1
-    Dcml,   // 2
-    Bool,   // 3
-    String, // 4
+    Int,       // 1
+    Dcml,      // 2
+    Bool,      // 3
+    String,    // 4
+    CallStack, // 5
 }
 impl Type {
     //size in bytes including tag at end
@@ -63,6 +65,7 @@ impl Type {
             Type::Dcml => 8,
             Type::Bool => 1,
             Type::String => 2,
+            Type::CallStack => 4,
         }) + 1
     }
 }
