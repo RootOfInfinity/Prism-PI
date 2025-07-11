@@ -12,8 +12,8 @@ fn main() {
         println!("cargo run -- gui");
     } else {
         match args[1].as_str() {
-            "lang" => crate::lang::run_lang_test(),
-            "gui" => crate::gui::run_gui_test(),
+            "lang" => crate::lang::run_lang_test(args),
+            "gui" => crate::gui::run_gui_test(args),
             x => println!("Invalid argument: {}", x),
         }
     }

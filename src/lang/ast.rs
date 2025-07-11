@@ -14,7 +14,7 @@ pub enum ExprAST {
     Var(String),
     Lit(Literal),
     BinOp(Operator, Box<ExprAST>, Box<ExprAST>),
-    Call(String, Vec<ExprAST>),
+    Call(String, Vec<Expression>),
 }
 
 #[derive(Clone)]

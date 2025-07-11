@@ -4,8 +4,6 @@ use std::{
     thread,
 };
 
-use crate::lang::asm::print_instructions;
-
 use super::{
     asm::Instruction,
     ast::{Assignment, ExprAST, FunctionAst, Statement},
@@ -150,6 +148,9 @@ impl FuncCompiler {
             Operator::BAnd => Instruction::And,
             Operator::BOr => Instruction::Or,
             Operator::BXor => Instruction::Xor,
+            Operator::And => Instruction::And,
+            Operator::Or => Instruction::Or,
+            Operator::Xor => Instruction::Xor,
         });
         if let Operator::NEq = op {
             self.code.push(Instruction::Not);
@@ -186,7 +187,7 @@ impl FuncCompiler {
             }
             ExprAST::Call(s, x) => {
                 for expr in x {
-                    self.compile_expr(expr);
+                    self.compile_expr(expr.expr);
                 }
                 self.stack_top += self.ret_types.get(&s).unwrap().size() as u16;
                 self.code.push(Instruction::Call(s));
@@ -385,7 +386,7 @@ impl CompilerComposer {
             }
             ExprAST::Call(_, exvec) => {
                 for ex in exvec {
-                    self.create_consts_in_expr(ex);
+                    self.create_consts_in_expr(ex.expr);
                 }
             }
         }

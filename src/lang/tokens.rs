@@ -39,10 +39,10 @@ pub enum Operator {
     LEq,
     Greater,
     GEq,
-    // Logical
-    // And,
-    // Or,
-    // Xor,
+    // Logical (right now, it is just for precidence)
+    And,
+    Or,
+    Xor,
     // Bitwise
     BAnd,
     BOr,

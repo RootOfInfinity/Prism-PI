@@ -37,77 +37,62 @@ impl ParsingMachine {
         self.finished = false;
     }
     pub fn parse_function(&mut self) -> Result<FunctionAst, CompileError> {
-        let Token::Fun = self.cur_tok.0 else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+        let (Token::Fun, loc) = &self.cur_tok else {
+            return Err(self.err("".to_string()));
         };
+        let loc = loc.to_owned();
         self.eat_tok();
         let Token::Ident(func_ident) = self.cur_tok.0.clone() else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         self.eat_tok();
         let Token::LeftParen = self.cur_tok.0.clone() else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         // there will be some WEIRD bugs with commas
         // that will be fixed later.
         // this comment will be removed when it is fixed.
-        let mut peram_vec: Vec<(Type, String)> = Vec::new();
+        let mut param_vec: Vec<(String, Type)> = Vec::new();
         while !matches!(self.cur_tok.0, Token::RightParen) {
             let Token::DeclareType(typ) = self.cur_tok.0.clone() else {
-                return Err(CompileError::new(
-                    ErrorType::ParsingError,
-                    self.cur_tok.1.line,
-                    self.cur_tok.1.col,
-                ));
+                return Err(self.err("".to_string()));
             };
             self.eat_tok(); // eats the type
             let Token::Ident(arg_name) = self.cur_tok.0.clone() else {
-                return Err(CompileError::new(
-                    ErrorType::ParsingError,
-                    self.cur_tok.1.line,
-                    self.cur_tok.1.col,
-                ));
+                return Err(self.err("".to_string()));
             };
             self.eat_tok();
-            /// eats the ident
-            peram_vec.push((typ, arg_name));
+            // eats the ident
+            param_vec.push((arg_name, typ));
             match self.cur_tok.0 {
                 Token::Comma => {
                     self.eat_tok();
                     continue;
                 }
                 Token::RightParen => break,
-                _ => {
-                    return Err(CompileError::new(
-                        ErrorType::ParsingError,
-                        self.cur_tok.1.line,
-                        self.cur_tok.1.col,
-                    ));
-                }
+                _ => return Err(self.err("".to_string())),
             }
         }
-
-        todo!()
+        let Token::RArrow = self.cur_tok.0 else {
+            return Err(self.err("".to_string()));
+        };
+        self.eat_tok();
+        let Token::DeclareType(ret_type) = &self.cur_tok.0 else {
+            return Err(self.err("".to_string()));
+        };
+        let ret_type = ret_type.to_owned();
+        let block = self.collect_curly_statements()?;
+        Ok(FunctionAst {
+            loc,
+            name: func_ident,
+            params: param_vec,
+            code: block,
+            ret_type,
+        })
     }
     fn collect_curly_statements(&mut self) -> Result<Vec<Statement>, CompileError> {
         if !matches!(self.cur_tok.0, Token::LeftCurly) {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         }
         self.eat_tok(); // eat left curly
         let mut state_vec: Vec<Statement> = Vec::new();
@@ -124,13 +109,7 @@ impl ParsingMachine {
             Token::Ident(_) => match self.peek_tok() {
                 Some(&(Token::LeftParen, _)) => Ok(Statement::Expr(self.parse_expression()?)),
                 Some(&(Token::Assign, _)) => self.parse_assign(),
-                _ => {
-                    return Err(CompileError::new(
-                        ErrorType::ParsingError,
-                        self.cur_tok.1.line,
-                        self.cur_tok.1.col,
-                    ));
-                }
+                _ => return Err(self.err("".to_string())),
             },
             Token::If => self.parse_if(),
             Token::While => self.parse_while(),
@@ -147,11 +126,7 @@ impl ParsingMachine {
         // ate the if
         let cond = self.parse_expression()?;
         let Token::LeftCurly = self.cur_tok.0 else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         let ecode;
         if let Token::Else = self.cur_tok.0 {
@@ -178,11 +153,7 @@ impl ParsingMachine {
         // ate the while
         let cond = self.parse_expression()?;
         let Token::LeftCurly = self.cur_tok.0 else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         let block = self.collect_curly_statements()?;
         Ok(Statement::While(WhileBlock {
@@ -198,28 +169,16 @@ impl ParsingMachine {
         };
         self.eat_tok(); // eat type
         let (Token::Ident(ident), loc) = self.cur_tok.clone() else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         self.eat_tok(); // eat ident
         if !matches!(self.cur_tok.0, Token::Assign) {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         }
         self.eat_tok();
         let expr = self.parse_expression()?;
         let Token::Semicolon = self.cur_tok.0 else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         Ok(Statement::Decl(Declaration {
             typ,
@@ -241,11 +200,7 @@ impl ParsingMachine {
         let v_loc = self.cur_tok.1.clone();
         let expr = self.parse_expr()?;
         let Token::Semicolon = self.cur_tok.0 else {
-            return Err(CompileError::new(
-                ErrorType::ParsingError,
-                self.cur_tok.1.line,
-                self.cur_tok.1.col,
-            ));
+            return Err(self.err("".to_string()));
         };
         Ok(Statement::Assign(Assignment {
             ident: name,
@@ -285,20 +240,54 @@ impl ParsingMachine {
             lhs = ExprAST::BinOp(binop, Box::new(lhs), Box::new(rhs));
         }
     }
+    fn parse_ident(&mut self) -> Result<ExprAST, CompileError> {
+        let Token::Ident(ident) = &self.cur_tok.0 else {
+            return Err(self.err("".to_string()));
+        };
+        let ident = ident.clone();
+        self.eat_tok();
+        if let Token::LeftParen = self.cur_tok.0 {
+            self.eat_tok();
+            let mut param_vec = Vec::new();
+            loop {
+                let expr = self.parse_expression()?;
+                param_vec.push(expr);
+                match self.cur_tok.0 {
+                    Token::Comma => {
+                        self.eat_tok();
+                        continue;
+                    }
+                    Token::RightParen => {
+                        break;
+                    }
+                    _ => return Err(self.err("".to_string())),
+                }
+            }
+            self.eat_tok();
+            return Ok(ExprAST::Call(ident, param_vec));
+        } else {
+            return Ok(ExprAST::Var(ident));
+        }
+    }
+    fn parse_paren(&mut self) -> Result<ExprAST, CompileError> {
+        self.eat_tok(); // the left parenthesis
+        let expr = self.parse_expr()?;
+        let Token::RightParen = self.cur_tok.0 else {
+            return Err(self.err("".to_string()));
+        };
+        return Ok(expr);
+    }
     fn parse_primary(&mut self) -> Result<ExprAST, CompileError> {
         match &self.cur_tok.0 {
-            Token::Ident(_) => (),
-            Token::Lit(_) => (),
-            Token::LeftParen => (),
-            _ => {
-                return Err(CompileError {
-                    e_type: ErrorType::LexingError,
-                    line: self.cur_tok.1.line,
-                    col: self.cur_tok.1.col,
-                });
-            }
+            Token::Ident(_) => self.parse_ident(),
+            Token::Lit(lit) => Ok(ExprAST::Lit(lit.clone())),
+            Token::LeftParen => self.parse_paren(),
+            _ => Err(CompileError {
+                e_type: ErrorType::LexingError,
+                line: self.cur_tok.1.line,
+                col: self.cur_tok.1.col,
+            }),
         }
-        Ok(ExprAST::Var("lol".to_string()))
     }
 
     fn eat_tok(&mut self) {
@@ -315,6 +304,24 @@ impl ParsingMachine {
         }
     }
     fn get_priority(op: &Operator) -> u32 {
-        todo!()
+        match op {
+            Operator::And | Operator::Or | Operator::Xor => 10,
+            Operator::LEq
+            | Operator::Less
+            | Operator::GEq
+            | Operator::Greater
+            | Operator::Eq
+            | Operator::NEq => 20,
+            Operator::BAnd | Operator::BOr | Operator::BXor => 30,
+            Operator::Add | Operator::Sub => 40,
+            Operator::Mult | Operator::Div | Operator::Mod => 50,
+        }
+    }
+    fn err(&self, err_name: String) -> CompileError {
+        return CompileError {
+            e_type: ErrorType::ParsingError(err_name),
+            line: self.cur_tok.1.line,
+            col: self.cur_tok.1.col,
+        };
     }
 }

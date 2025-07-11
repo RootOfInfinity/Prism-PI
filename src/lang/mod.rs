@@ -22,7 +22,7 @@ mod errors;
 // debugging
 mod repl;
 
-pub fn run_lang_test() {
+pub fn run_lang_test(params: Vec<String>) {
     // run tests for lang
     println!("lang stuff");
     let func = FunctionAst {
