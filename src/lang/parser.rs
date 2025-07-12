@@ -16,19 +16,18 @@ pub struct ParsingMachine {
     tok_vec: VecDeque<(Token, Loc)>,
     finished: bool,
 }
-// TODO primary, expression, function
 impl ParsingMachine {
-    pub fn new(all_tha_tokens: Vec<(Token, Loc)>) -> Option<Self> {
-        if all_tha_tokens.len() < 1 {
-            return None;
-        }
+    pub fn new(all_tha_tokens: Vec<(Token, Loc)>) -> Self {
+        // if all_tha_tokens.len() < 1 {
+        //     return None;
+        // }
         let mut tok_vec: VecDeque<(Token, Loc)> = all_tha_tokens.into_iter().collect();
-        let cur_tok = tok_vec.pop_front().unwrap();
-        Some(ParsingMachine {
+        let cur_tok = tok_vec.pop_front().expect("needed one token");
+        ParsingMachine {
             cur_tok,
             tok_vec,
             finished: false,
-        })
+        }
     }
     pub fn append_tok(&mut self, new_stuff: Vec<(Token, Loc)>) {
         for thing in new_stuff {
@@ -36,30 +35,40 @@ impl ParsingMachine {
         }
         self.finished = false;
     }
+    pub fn parse_all(mut self) -> Result<Vec<FunctionAst>, CompileError> {
+        let mut all_funcs = Vec::new();
+        while !self.finished {
+            all_funcs.push(self.parse_function()?);
+        }
+        Ok(all_funcs)
+    }
     pub fn parse_function(&mut self) -> Result<FunctionAst, CompileError> {
         let (Token::Fun, loc) = &self.cur_tok else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Did not find keyword 'fun'.".to_string()));
         };
         let loc = loc.to_owned();
         self.eat_tok();
         let Token::Ident(func_ident) = self.cur_tok.0.clone() else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected function name after 'fun' keyword".to_string()));
         };
         self.eat_tok();
         let Token::LeftParen = self.cur_tok.0.clone() else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected left parenthesis after function name".to_string()));
         };
+        self.eat_tok();
         // there will be some WEIRD bugs with commas
         // that will be fixed later.
         // this comment will be removed when it is fixed.
         let mut param_vec: Vec<(String, Type)> = Vec::new();
         while !matches!(self.cur_tok.0, Token::RightParen) {
             let Token::DeclareType(typ) = self.cur_tok.0.clone() else {
-                return Err(self.err("".to_string()));
+                return Err(self.err("Expected a type in function parameters".to_string()));
             };
             self.eat_tok(); // eats the type
             let Token::Ident(arg_name) = self.cur_tok.0.clone() else {
-                return Err(self.err("".to_string()));
+                return Err(
+                    self.err("Expected ident after type in function parameters".to_string())
+                );
             };
             self.eat_tok();
             // eats the ident
@@ -70,18 +79,27 @@ impl ParsingMachine {
                     continue;
                 }
                 Token::RightParen => break,
-                _ => return Err(self.err("".to_string())),
+                _ => {
+                    return Err(
+                        self.err("Expected ',' or ')' after parameter in function".to_string())
+                    );
+                }
             }
         }
+        self.eat_tok();
         let Token::RArrow = self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected return arrow ('->')".to_string()));
         };
         self.eat_tok();
         let Token::DeclareType(ret_type) = &self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected return arrow to point to type".to_string()));
         };
         let ret_type = ret_type.to_owned();
+        self.eat_tok();
         let block = self.collect_curly_statements()?;
+        if let Token::EndOfFile = self.cur_tok.0 {
+            self.finished = true;
+        }
         Ok(FunctionAst {
             loc,
             name: func_ident,
@@ -92,8 +110,9 @@ impl ParsingMachine {
     }
     fn collect_curly_statements(&mut self) -> Result<Vec<Statement>, CompileError> {
         if !matches!(self.cur_tok.0, Token::LeftCurly) {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected a block".to_string()));
         }
+        let stloc = self.cur_tok.1.clone();
         self.eat_tok(); // eat left curly
         let mut state_vec: Vec<Statement> = Vec::new();
         while !matches!(self.cur_tok.0, Token::RightCurly) {
@@ -109,15 +128,18 @@ impl ParsingMachine {
             Token::Ident(_) => match self.peek_tok() {
                 Some(&(Token::LeftParen, _)) => Ok(Statement::Expr(self.parse_expression()?)),
                 Some(&(Token::Assign, _)) => self.parse_assign(),
-                _ => return Err(self.err("".to_string())),
+                _ => Ok(Statement::Expr(self.parse_expression()?)),
             },
             Token::If => self.parse_if(),
             Token::While => self.parse_while(),
-            Token::Return => Ok(Statement::Return(Return {
-                expr: self.parse_expression()?,
-                loc: self.cur_tok.1.clone(),
-            })),
-            _ => todo!(),
+            Token::Return => {
+                self.eat_tok();
+                Ok(Statement::Return(Return {
+                    expr: self.parse_expression()?,
+                    loc: self.cur_tok.1.clone(),
+                }))
+            }
+            _ => Err(self.err("something weird with doing statements".to_owned())),
         }
     }
     fn parse_if(&mut self) -> Result<Statement, CompileError> {
@@ -126,9 +148,10 @@ impl ParsingMachine {
         // ate the if
         let cond = self.parse_expression()?;
         let Token::LeftCurly = self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected block after if conditional".to_string()));
         };
         let ecode;
+        let block = self.collect_curly_statements()?;
         if let Token::Else = self.cur_tok.0 {
             self.eat_tok();
             if let Token::LeftCurly = self.cur_tok.0 {
@@ -139,7 +162,6 @@ impl ParsingMachine {
         } else {
             ecode = Vec::new();
         }
-        let block = self.collect_curly_statements()?;
         Ok(Statement::If(IfBlock {
             cond,
             loc,
@@ -153,7 +175,7 @@ impl ParsingMachine {
         // ate the while
         let cond = self.parse_expression()?;
         let Token::LeftCurly = self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected block after while conditional".to_string()));
         };
         let block = self.collect_curly_statements()?;
         Ok(Statement::While(WhileBlock {
@@ -169,17 +191,21 @@ impl ParsingMachine {
         };
         self.eat_tok(); // eat type
         let (Token::Ident(ident), loc) = self.cur_tok.clone() else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected ident after type declaration".to_string()));
         };
         self.eat_tok(); // eat ident
         if !matches!(self.cur_tok.0, Token::Assign) {
-            return Err(self.err("".to_string()));
+            return Err(self.err(
+                "Expected an '=' after declaration (you have to declare and assign in one line)"
+                    .to_string(),
+            ));
         }
         self.eat_tok();
         let expr = self.parse_expression()?;
         let Token::Semicolon = self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected a semicolon".to_string()));
         };
+        self.eat_tok();
         Ok(Statement::Decl(Declaration {
             typ,
             ident,
@@ -200,7 +226,7 @@ impl ParsingMachine {
         let v_loc = self.cur_tok.1.clone();
         let expr = self.parse_expr()?;
         let Token::Semicolon = self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected a semicolon".to_string()));
         };
         Ok(Statement::Assign(Assignment {
             ident: name,
@@ -210,10 +236,12 @@ impl ParsingMachine {
         }))
     }
     fn parse_expression(&mut self) -> Result<Expression, CompileError> {
-        Ok(Expression {
+        let ans = Ok(Expression {
             expr: self.parse_expr()?,
             loc: self.cur_tok.1.clone(),
-        })
+        });
+        self.eat_tok();
+        ans
     }
     fn parse_expr(&mut self) -> Result<ExprAST, CompileError> {
         let lhs = self.parse_primary()?;
@@ -242,7 +270,7 @@ impl ParsingMachine {
     }
     fn parse_ident(&mut self) -> Result<ExprAST, CompileError> {
         let Token::Ident(ident) = &self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            unreachable!()
         };
         let ident = ident.clone();
         self.eat_tok();
@@ -260,7 +288,11 @@ impl ParsingMachine {
                     Token::RightParen => {
                         break;
                     }
-                    _ => return Err(self.err("".to_string())),
+                    _ => {
+                        return Err(
+                            self.err("Expected a ',' or ')' in call parameters".to_string())
+                        );
+                    }
                 }
             }
             self.eat_tok();
@@ -273,7 +305,7 @@ impl ParsingMachine {
         self.eat_tok(); // the left parenthesis
         let expr = self.parse_expr()?;
         let Token::RightParen = self.cur_tok.0 else {
-            return Err(self.err("".to_string()));
+            return Err(self.err("Expected a closed parenthesis in expression".to_string()));
         };
         return Ok(expr);
     }
@@ -282,11 +314,10 @@ impl ParsingMachine {
             Token::Ident(_) => self.parse_ident(),
             Token::Lit(lit) => Ok(ExprAST::Lit(lit.clone())),
             Token::LeftParen => self.parse_paren(),
-            _ => Err(CompileError {
-                e_type: ErrorType::LexingError,
-                line: self.cur_tok.1.line,
-                col: self.cur_tok.1.col,
-            }),
+            _ => {
+                Err(self
+                    .err("Expected an Identifier, Literal, or '(', got unknown token".to_string()))
+            }
         }
     }
 

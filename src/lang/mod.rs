@@ -1,6 +1,10 @@
+use std::fs;
+
 use asm::print_instructions;
 use ast::{ExprAST, Expression, FunctionAst, IfBlock, Loc, Statement};
 use codegen::{CompilerComposer, FuncCompiler};
+use lexer::LexEngine;
+use parser::ParsingMachine;
 use repl::Repl;
 use tokens::{Literal, Type};
 
@@ -22,7 +26,7 @@ mod errors;
 // debugging
 mod repl;
 
-pub fn run_lang_test(params: Vec<String>) {
+pub fn run_lang_test(args: Vec<String>) {
     // run tests for lang
     println!("lang stuff");
     let func = FunctionAst {
@@ -56,6 +60,19 @@ pub fn run_lang_test(params: Vec<String>) {
         ],
         ret_type: Type::Int,
     };
-    let func_runner = CompilerComposer::new(vec![func]);
-    print_instructions(&func_runner.parallel_compile());
+    // let func_runner = CompilerComposer::new(vec![func]);
+    // print_instructions(&func_runner.parallel_compile());
+    println!("Getting path");
+    let path = args[2].clone();
+    println!("Got path: {}", path);
+    let raw = fs::read_to_string(path).expect("File not found");
+    println!("RAW CODE:\n{}", raw);
+    let lex = LexEngine::new(raw);
+    let toks = lex.lex_all().unwrap();
+    println!("TOKENS:\n{:#?}", toks);
+    let parser = ParsingMachine::new(toks);
+    let ast = parser.parse_all().unwrap();
+    println!("AST:\n{:#?}", ast);
+    let compiler = CompilerComposer::new(ast);
+    print_instructions(&compiler.parallel_compile());
 }

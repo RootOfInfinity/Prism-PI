@@ -11,7 +11,7 @@ impl CompileError {
 }
 #[derive(Clone, Debug)]
 pub enum ErrorType {
-    LexingError,
+    LexingError(String),
     ParsingError(String),
     TypeError,
 }

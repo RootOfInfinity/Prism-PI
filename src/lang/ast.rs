@@ -1,6 +1,6 @@
 use super::tokens::{Literal, Operator, Type};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FunctionAst {
     pub loc: Loc,
     pub name: String,
@@ -9,7 +9,7 @@ pub struct FunctionAst {
     pub ret_type: Type,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ExprAST {
     Var(String),
     Lit(Literal),
@@ -17,7 +17,7 @@ pub enum ExprAST {
     Call(String, Vec<Expression>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     Expr(Expression),
     Decl(Declaration),
@@ -27,7 +27,7 @@ pub enum Statement {
     Return(Return),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Declaration {
     pub typ: Type,
     pub ident: String,
@@ -36,13 +36,13 @@ pub struct Declaration {
     pub val_loc: Loc,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Expression {
     pub expr: ExprAST,
     pub loc: Loc,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assignment {
     pub ident: String,
     pub ident_loc: Loc,
@@ -50,7 +50,7 @@ pub struct Assignment {
     pub val_loc: Loc,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IfBlock {
     pub cond: Expression,
     pub loc: Loc,
@@ -58,14 +58,14 @@ pub struct IfBlock {
     pub ecode: Vec<Statement>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WhileBlock {
     pub cond: Expression,
     pub loc: Loc,
     pub code: Vec<Statement>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Return {
     pub expr: Expression,
     pub loc: Loc,

@@ -22,8 +22,8 @@ impl LexEngine {
             None => ' ',
         };
         LexEngine {
-            line: 0,
-            col: 0,
+            line: 1,
+            col: 1,
             cur_char: first_char,
             char_collect: char_vec,
             finished: false,
@@ -34,6 +34,18 @@ impl LexEngine {
             self.char_collect.push_back(thing);
         }
         self.finished = false;
+    }
+    pub fn lex_all(mut self) -> Result<Vec<(Token, Loc)>, CompileError> {
+        let mut all_of_it = Vec::new();
+        loop {
+            let tok = self.get_tok()?;
+            // println!("{:#?}", tok);
+            if let Token::EndOfFile = tok.0 {
+                break;
+            }
+            all_of_it.push(tok);
+        }
+        Ok(all_of_it)
     }
     pub fn get_tok(&mut self) -> Result<(Token, Loc), CompileError> {
         // remove whitespace
@@ -79,6 +91,7 @@ impl LexEngine {
                     "dcml" => Token::DeclareType(Type::Dcml),
                     "bool" => Token::DeclareType(Type::Bool),
                     "if" => Token::If,
+                    "else" => Token::Else,
                     "while" => Token::While,
                     "true" => Token::Lit(Literal::Bool(true)),
                     "false" => Token::Lit(Literal::Bool(false)),
@@ -103,11 +116,7 @@ impl LexEngine {
             while self.is_numeric() {
                 if self.cur_char == '.' {
                     if has_point {
-                        return Err(CompileError::new(
-                            ErrorType::LexingError,
-                            self.line,
-                            self.col,
-                        ));
+                        return Err(self.err("".to_owned()));
                     } else {
                         has_point = true;
                     }
@@ -151,11 +160,7 @@ impl LexEngine {
                     let next_char = match self.peek_char() {
                         Some(x) => x,
                         None => {
-                            return Err(CompileError::new(
-                                ErrorType::LexingError,
-                                self.line,
-                                self.col,
-                            ));
+                            return Err(self.err("".to_owned()));
                         }
                     };
                     match next_char {
@@ -164,11 +169,7 @@ impl LexEngine {
                         '"' => string_lit.push('"'),
                         _ => {
                             self.eat_char();
-                            return Err(CompileError::new(
-                                ErrorType::LexingError,
-                                self.line,
-                                self.col,
-                            ));
+                            return Err(self.err("".to_owned()));
                         }
                     }
                     self.eat_char();
@@ -180,11 +181,7 @@ impl LexEngine {
                 }
             }
             if self.finished {
-                return Err(CompileError::new(
-                    ErrorType::LexingError,
-                    self.line,
-                    self.col,
-                ));
+                return Err(self.err("".to_owned()));
             }
             self.eat_char();
             return Ok((
@@ -199,8 +196,10 @@ impl LexEngine {
             let mut sym_string = String::new();
             sym_string.push(self.cur_char);
             self.eat_char();
+
             while self.is_part_of_symbol() {
                 sym_string.push(self.cur_char);
+                self.eat_char();
             }
             match LexEngine::get_symbol(&sym_string) {
                 Some(x) => {
@@ -213,29 +212,37 @@ impl LexEngine {
                     ));
                 }
                 None => {
-                    return Err(CompileError::new(
-                        ErrorType::LexingError,
-                        self.line,
-                        self.col,
-                    ));
+                    return Err(self.err("".to_owned()));
                 }
             }
+        }
+        if self.is_grouper() {
+            let groupch = self.cur_char;
+            self.eat_char();
+            return Ok((
+                match groupch {
+                    '(' => Token::LeftParen,
+                    '[' => Token::LeftBrack,
+                    '{' => Token::LeftCurly,
+                    ')' => Token::RightParen,
+                    ']' => Token::RightBrack,
+                    '}' => Token::RightCurly,
+                    _ => return Err(self.err("".to_string())),
+                },
+                Loc::new(self.line, self.col),
+            ));
         }
         eprintln!(
             "Did not know what to do with {}. I got no clue ngl",
             self.cur_char
         );
         self.eat_char();
-        return Err(CompileError::new(
-            ErrorType::LexingError,
-            self.line,
-            self.col,
-        ));
+        return Err(self.err("".to_owned()));
     }
     fn eat_char(&mut self) {
         if self.cur_char == '\n' {
             self.line += 1;
-            self.col = 0;
+            self.col = 1;
         } else {
             self.col += 1;
         }
@@ -279,9 +286,22 @@ impl LexEngine {
             '<' | '>' => true,
             '&' | '|' | '^' => true,
             ',' | ';' => true,
+            // '(' | ')' | '[' | ']' | '{' | '}' => true,
+            _ => false,
+        }
+    }
+    fn is_grouper(&self) -> bool {
+        match self.cur_char {
             '(' | ')' | '[' | ']' | '{' | '}' => true,
             _ => false,
         }
+    }
+    fn err(&self, err_name: String) -> CompileError {
+        return CompileError {
+            e_type: ErrorType::LexingError(err_name),
+            line: self.line,
+            col: self.col,
+        };
     }
     fn get_symbol(sym_str: &str) -> Option<Token> {
         match sym_str {
@@ -296,9 +316,9 @@ impl LexEngine {
             "<=" => Some(Token::Op(Operator::LEq)),
             ">" => Some(Token::Op(Operator::Greater)),
             ">=" => Some(Token::Op(Operator::GEq)),
-            // "&&" => Some(Token::Op(Operator::And)),
-            // "||" => Some(Token::Op(Operator::Or)),
-            // "^^" => Some(Token::Op(Operator::Xor)),
+            "&&" => Some(Token::Op(Operator::And)),
+            "||" => Some(Token::Op(Operator::Or)),
+            "^^" => Some(Token::Op(Operator::Xor)),
             "&" => Some(Token::Op(Operator::BAnd)),
             "|" => Some(Token::Op(Operator::BOr)),
             "^" => Some(Token::Op(Operator::BXor)),
@@ -310,12 +330,12 @@ impl LexEngine {
             "%=" => Some(Token::ShortHand(ShortHand::ModEq)),
             ";" => Some(Token::Semicolon),
             "," => Some(Token::Comma),
-            "(" => Some(Token::LeftParen),
-            ")" => Some(Token::RightParen),
-            "[" => Some(Token::LeftBrack),
-            "]" => Some(Token::RightBrack),
-            "{" => Some(Token::LeftCurly),
-            "}" => Some(Token::RightCurly),
+            // "(" => Some(Token::LeftParen),
+            // ")" => Some(Token::RightParen),
+            // "[" => Some(Token::LeftBrack),
+            // "]" => Some(Token::RightBrack),
+            // "{" => Some(Token::LeftCurly),
+            // "}" => Some(Token::RightCurly),
             "->" => Some(Token::RArrow),
 
             _ => None,
