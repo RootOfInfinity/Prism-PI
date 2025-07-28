@@ -23,6 +23,8 @@ mod vm;
 // mod optimizing;
 // error handling
 mod errors;
+// semantic analysis
+mod ctrlflow;
 mod typecheck;
 // debugging
 mod repl;

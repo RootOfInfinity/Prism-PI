@@ -13,5 +13,7 @@ impl CompileError {
 pub enum ErrorType {
     LexingError(String),
     ParsingError(String),
+    VariableError(String),
+    ControlFlowError(String),
     TypeError(String),
 }
