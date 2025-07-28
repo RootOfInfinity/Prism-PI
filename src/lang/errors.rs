@@ -9,9 +9,9 @@ impl CompileError {
         CompileError { e_type, line, col }
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorType {
     LexingError(String),
     ParsingError(String),
-    TypeError,
+    TypeError(String),
 }

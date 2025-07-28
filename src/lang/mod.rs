@@ -5,8 +5,8 @@ use ast::{ExprAST, Expression, FunctionAst, IfBlock, Loc, Statement};
 use codegen::{CompilerComposer, FuncCompiler};
 use lexer::LexEngine;
 use parser::ParsingMachine;
-use repl::Repl;
 use tokens::{Literal, Type};
+use typecheck::TypeChecker;
 
 // frontend
 mod ast;
@@ -23,6 +23,7 @@ mod vm;
 // mod optimizing;
 // error handling
 mod errors;
+mod typecheck;
 // debugging
 mod repl;
 
@@ -69,10 +70,17 @@ pub fn run_lang_test(args: Vec<String>) {
     println!("RAW CODE:\n{}", raw);
     let lex = LexEngine::new(raw);
     let toks = lex.lex_all().unwrap();
-    println!("TOKENS:\n{:#?}", toks);
+    // println!("TOKENS:\n{:#?}", toks);
     let parser = ParsingMachine::new(toks);
     let ast = parser.parse_all().unwrap();
     println!("AST:\n{:#?}", ast);
+    let type_checker = TypeChecker::new(ast.to_owned());
+    if let Err(vec) = type_checker.check_all() {
+        println!("Type Check reports TYPE ERRORS.\n{:#?}", vec);
+        return;
+    } else {
+        println!("Type Check reports NO ERRORS!");
+    }
     let compiler = CompilerComposer::new(ast);
     print_instructions(&compiler.parallel_compile());
 }
