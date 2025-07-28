@@ -152,12 +152,13 @@ impl TypeChecker {
                 Ok(())
             }
             Statement::Decl(declaration) => {
-                let ret_type = self.check_expr(declaration.val, declaration.val_loc, &varmap)?;
-                if discriminant(&declaration.typ) != discriminant(&ret_type) {
+                let expr_ret_type =
+                    self.check_expr(declaration.val, declaration.val_loc, &varmap)?;
+                if discriminant(&declaration.typ) != discriminant(&expr_ret_type) {
                     let err = CompileError {
                         e_type: ErrorType::TypeError(format!(
                             "Tried to set variable '{}' of type '{:#?}' to type of '{:#?}'",
-                            &declaration.ident, declaration.typ, ret_type
+                            &declaration.ident, declaration.typ, expr_ret_type
                         )),
                         line: declaration.ident_loc.line,
                         col: declaration.ident_loc.col,
@@ -165,11 +166,47 @@ impl TypeChecker {
                     self.errors.push(err.to_owned());
                     return Err(err);
                 }
+                if varmap.contains_key(&declaration.ident) {
+                    let err = self.err(
+                        &declaration.ident_loc,
+                        &format!(
+                            "Cannot declare the same named variable '{}' twice in the same scope (Shadowing is not allowed).",
+                            declaration.ident
+                        ),
+                    );
+                    self.add_err(err.to_owned());
+                    return Err(err);
+                };
+
                 varmap.insert(declaration.ident, declaration.typ);
                 Ok(())
             }
             Statement::Assign(assignment) => {
-                self.check_expr(assignment.val, assignment.val_loc, &varmap)?;
+                let expr_ret_type = self.check_expr(assignment.val, assignment.val_loc, &varmap)?;
+                let Some(actual_type) = varmap.get(&assignment.ident) else {
+                    let err = self.err(
+                        &assignment.ident_loc,
+                        &format!(
+                            "Could not find variable '{}' in current scope",
+                            assignment.ident
+                        ),
+                    );
+                    self.add_err(err.to_owned());
+                    return Err(err);
+                };
+                if discriminant(actual_type) != discriminant(&expr_ret_type) {
+                    let err = CompileError {
+                        e_type: ErrorType::TypeError(format!(
+                            "Tried to set variable '{}' of type '{:#?}' to type of '{:#?}'",
+                            &assignment.ident, actual_type, expr_ret_type
+                        )),
+                        line: assignment.ident_loc.line,
+                        col: assignment.ident_loc.col,
+                    };
+                    self.errors.push(err.to_owned());
+                    return Err(err);
+                }
+
                 Ok(())
             }
             Statement::If(ifblock) => {
