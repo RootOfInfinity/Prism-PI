@@ -134,12 +134,17 @@ impl ParsingMachine {
             Token::While => self.parse_while(),
             Token::Return => {
                 self.eat_tok();
-                Ok(Statement::Return(Return {
+                let ans = Ok(Statement::Return(Return {
                     expr: self.parse_expression()?,
                     loc: self.cur_tok.1.clone(),
-                }))
+                }));
+                let Token::Semicolon = self.cur_tok.0 else {
+                    return Err(self.err("Expected semicolon after return statement".to_owned()));
+                };
+                self.eat_tok();
+                ans
             }
-            _ => Err(self.err("something weird with doing statements".to_owned())),
+            _ => Err(self.err("Unexpected Token".to_owned())),
         }
     }
     fn parse_if(&mut self) -> Result<Statement, CompileError> {
@@ -240,7 +245,7 @@ impl ParsingMachine {
             expr: self.parse_expr()?,
             loc: self.cur_tok.1.clone(),
         });
-        self.eat_tok();
+        // self.eat_tok();
         ans
     }
     fn parse_expr(&mut self) -> Result<ExprAST, CompileError> {
@@ -312,7 +317,11 @@ impl ParsingMachine {
     fn parse_primary(&mut self) -> Result<ExprAST, CompileError> {
         match &self.cur_tok.0 {
             Token::Ident(_) => self.parse_ident(),
-            Token::Lit(lit) => Ok(ExprAST::Lit(lit.clone())),
+            Token::Lit(lit) => {
+                let ans = Ok(ExprAST::Lit(lit.clone()));
+                self.eat_tok();
+                ans
+            }
             Token::LeftParen => self.parse_paren(),
             _ => {
                 Err(self

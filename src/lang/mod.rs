@@ -3,6 +3,7 @@ use std::fs;
 use asm::print_instructions;
 use ast::{ExprAST, Expression, FunctionAst, IfBlock, Loc, Statement};
 use codegen::{CompilerComposer, FuncCompiler};
+use ctrlflow::check_for_returns;
 use lexer::LexEngine;
 use parser::ParsingMachine;
 use tokens::{Literal, Type};
@@ -76,6 +77,13 @@ pub fn run_lang_test(args: Vec<String>) {
     let parser = ParsingMachine::new(toks);
     let ast = parser.parse_all().unwrap();
     println!("AST:\n{:#?}", ast);
+    match check_for_returns(ast.to_owned()) {
+        Ok(()) => println!("Control Flow diagram reports NO ERRORS!"),
+        Err(errvec) => {
+            println!("Control Flow diagram reports RETURN ERRORS.\n{:#?}", errvec);
+            return;
+        }
+    }
     let type_checker = TypeChecker::new(ast.to_owned());
     if let Err(vec) = type_checker.check_all() {
         println!("Type Check reports TYPE ERRORS.\n{:#?}", vec);
