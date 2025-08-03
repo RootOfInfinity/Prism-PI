@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 use super::tokens::Type;
 use super::wrapped_val::WrappedVal;
 
@@ -263,19 +265,117 @@ impl VM {
         return ProgState::Running;
     }
     fn mutate_var(&mut self, offset_from_top: u16) {
-        todo!()
+        let var_ptr = self.stack.len() - 1 - offset_from_top as usize;
+        let var_type = self.stack[var_ptr];
+        let new_ptr = self.stack.len() - 1;
+        let new_type = self.stack[new_ptr];
+        if var_type != new_type {
+            panic!();
+        }
+        match var_type {
+            INT_NUM => {
+                let new_slice = &self.stack[new_ptr - 1 - size_of::<i32>()..new_ptr - 1];
+                for i in 0..size_of::<i32>() {
+                    self.stack[var_ptr - 1 - size_of::<i32>() + i] =
+                        self.stack[new_ptr - 1 - size_of::<i32>() + i];
+                }
+            }
+            DCML_NUM => {
+                let new_slice = &self.stack[new_ptr - 1 - size_of::<f64>()..new_ptr - 1];
+                for i in 0..size_of::<f64>() {
+                    self.stack[var_ptr - 1 - size_of::<f64>() + i] =
+                        self.stack[new_ptr - 1 - size_of::<f64>() + i];
+                }
+            }
+            BOOL_NUM => {
+                let val = self.stack[new_ptr - 2];
+                self.stack[var_ptr - 2] = val;
+            }
+            STRING_NUM => {
+                let new_slice = &self.stack[new_ptr - 1 - size_of::<u16>()..new_ptr - 1];
+                for i in 0..size_of::<u16>() {
+                    self.stack[var_ptr - 1 - size_of::<u16>() + i] =
+                        self.stack[new_ptr - 1 - size_of::<u16>() + i];
+                }
+            }
+            _ => unreachable!(),
+        }
     }
-    fn get_const_wrapped(&self, index_of_const: u16) -> WrappedVal {
+    fn get_const_wrapped(&self, byte_index_of_const: u16) -> WrappedVal {
         todo!()
     }
     fn pop_stack_top_wrapped(&mut self) -> WrappedVal {
-        todo!()
+        let ans = self.wrap_stack_val(0);
+        for _ in 0..get_type_size(self.stack[self.stack.len() - 1]) {
+            self.stack.pop();
+        }
+        ans
     }
     fn wrap_stack_val(&self, offset_from_top: u16) -> WrappedVal {
-        todo!()
+        let off = offset_from_top as usize + 1;
+        match self.stack[self.stack.len() - off] {
+            INT_NUM => {
+                let num = i32::from_le_bytes(
+                    self.stack[self.stack.len() - off - size_of::<i32>()..self.stack.len() - off]
+                        .try_into()
+                        .unwrap(),
+                );
+                WrappedVal::Int(num)
+            }
+            DCML_NUM => {
+                let float = f64::from_le_bytes(
+                    self.stack[self.stack.len() - off - size_of::<f64>()..self.stack.len() - off]
+                        .try_into()
+                        .unwrap(),
+                );
+                WrappedVal::Dcml(float)
+            }
+            BOOL_NUM => {
+                let boolean = self.stack[self.stack.len() - off - 1] != 0;
+                WrappedVal::Bool(boolean)
+            }
+            STRING_NUM => {
+                let string_ind = u16::from_le_bytes(
+                    self.stack[self.stack.len() - off - size_of::<u16>()..self.stack.len() - off]
+                        .try_into()
+                        .unwrap(),
+                );
+                WrappedVal::String(string_ind)
+            }
+            CALLSTACK_NUM => {
+                let new_ip = u32::from_le_bytes(
+                    self.stack[self.stack.len() - off - size_of::<u32>()..self.stack.len() - off]
+                        .try_into()
+                        .unwrap(),
+                );
+                WrappedVal::CallStack(new_ip)
+            }
+            _ => unreachable!(),
+        }
     }
     fn push_wrapped(&mut self, wrap_val: WrappedVal) {
-        todo!()
+        match wrap_val {
+            WrappedVal::Int(int) => {
+                self.stack.extend_from_slice(&int.to_le_bytes());
+                self.stack.push(INT_NUM);
+            }
+            WrappedVal::Dcml(dcml) => {
+                self.stack.extend_from_slice(&dcml.to_le_bytes());
+                self.stack.push(DCML_NUM);
+            }
+            WrappedVal::Bool(boolean) => {
+                self.stack.push(boolean as u8);
+                self.stack.push(BOOL_NUM);
+            }
+            WrappedVal::String(string_ind) => {
+                self.stack.extend_from_slice(&string_ind.to_le_bytes());
+                self.stack.push(STRING_NUM);
+            }
+            WrappedVal::CallStack(new_ip) => {
+                self.stack.extend_from_slice(&new_ip.to_le_bytes());
+                self.stack.push(CALLSTACK_NUM);
+            }
+        }
     }
 }
 
@@ -311,4 +411,15 @@ fn get_inst_size(instruction_num: u8) -> usize {
         FUN_NUM => 3,
         _ => unreachable!(),
     }
+}
+
+fn get_type_size(type_num: u8) -> usize {
+    (match type_num {
+        INT_NUM => size_of::<i32>(),
+        DCML_NUM => size_of::<f64>(),
+        BOOL_NUM => size_of::<bool>(),
+        STRING_NUM => size_of::<u16>(),
+        CALLSTACK_NUM => size_of::<u32>(),
+        _ => unreachable!(),
+    }) + 1
 }
