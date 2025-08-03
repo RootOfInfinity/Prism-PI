@@ -10,6 +10,12 @@ use super::{
     tokens::{Literal, Operator, Type},
 };
 
+const INT_NUM: u8 = 1;
+const DCML_NUM: u8 = 2;
+const BOOL_NUM: u8 = 3;
+const STRING_NUM: u8 = 4;
+const CALLSTACK_NUM: u8 = 5;
+
 /// func compiler handles the trenches of the compiling stage
 /// the real variable declarations
 /// the expressions and statements
@@ -171,14 +177,16 @@ impl FuncCompiler {
         match expr {
             ExprAST::Var(x) => {
                 let vinfo = self.get_var(&x);
-                self.code.push(Instruction::Push(0, vinfo.0));
+                const PUSH_FROM_STACK: u8 = 0;
+                self.code.push(Instruction::Push(PUSH_FROM_STACK, vinfo.0));
                 self.stack_top += vinfo.1.size() as u16;
             } // find type of the var, and add memsize to stack
             ExprAST::Lit(x) => {
                 let ind = FuncCompiler::get_const(&self.consts, &self.pool, &x).unwrap();
                 let mem_size = x.get_type().size();
                 self.stack_top += mem_size as u16;
-                self.code.push(Instruction::Push(1, ind));
+                const PUSH_FROM_CONSTS: u8 = 1;
+                self.code.push(Instruction::Push(PUSH_FROM_CONSTS, ind));
             }
             ExprAST::BinOp(op, x, y) => {
                 self.compile_expr(*x);

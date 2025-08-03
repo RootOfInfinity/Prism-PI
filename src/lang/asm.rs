@@ -35,10 +35,7 @@ impl Assembler {
     pub fn new(consts: (Vec<u8>, Vec<Type>), pool: Vec<String>, code: Vec<Instruction>) -> Self {
         Assembler { consts, pool, code }
     }
-    pub fn extract_consts_and_pool(&self) -> (&(Vec<u8>, Vec<Type>), &Vec<String>) {
-        (&self.consts, &self.pool)
-    }
-    pub fn assemble(mut self) -> ((Vec<u8>, Vec<Type>), Vec<String>, Vec<u8>) {
+    pub fn assemble(self) -> ((Vec<u8>, Vec<Type>), Vec<String>, Vec<u8>) {
         let no_labels = self.real_rm_labels();
         let mut bc: Vec<u8> = Vec::new();
         for inst in no_labels {
@@ -114,34 +111,32 @@ impl Assembler {
             }
         }
         for inst in code {
-            out.push(
-                (match inst {
-                    Instruction::Ret(x) => NoLabelInst::Ret(*x),
-                    Instruction::Push(x, y) => NoLabelInst::Push(*x, *y),
-                    Instruction::Pop => NoLabelInst::Pop,
-                    Instruction::Mov(x) => NoLabelInst::Mov(*x),
-                    Instruction::Add => NoLabelInst::Add,
-                    Instruction::Sub => NoLabelInst::Sub,
-                    Instruction::Mul => NoLabelInst::Mul,
-                    Instruction::Div => NoLabelInst::Div,
-                    Instruction::Mod => NoLabelInst::Mod,
-                    Instruction::And => NoLabelInst::And,
-                    Instruction::Or => NoLabelInst::Or,
-                    Instruction::Not => NoLabelInst::Not,
-                    Instruction::Xor => NoLabelInst::Xor,
-                    Instruction::Eq => NoLabelInst::Eq,
-                    Instruction::L => NoLabelInst::L,
-                    Instruction::Le => NoLabelInst::Le,
-                    Instruction::G => NoLabelInst::G,
-                    Instruction::Ge => NoLabelInst::Ge,
-                    Instruction::Jmp(s) => NoLabelInst::Jmp(*map.get(s).expect("Invalid asm")),
-                    Instruction::Jz(s) => NoLabelInst::Jz(*map.get(s).expect("Invalid asm")),
-                    Instruction::Jnz(s) => NoLabelInst::Jnz(*map.get(s).expect("Invalid asm")),
-                    Instruction::Call(s) => NoLabelInst::Call(*map.get(s).expect("Invalid asm")),
-                    Instruction::Fun(x) => NoLabelInst::Fun(*x),
-                    Instruction::Label(_) => unreachable!(),
-                }),
-            )
+            out.push(match inst {
+                Instruction::Ret(x) => NoLabelInst::Ret(*x),
+                Instruction::Push(x, y) => NoLabelInst::Push(*x, *y),
+                Instruction::Pop => NoLabelInst::Pop,
+                Instruction::Mov(x) => NoLabelInst::Mov(*x),
+                Instruction::Add => NoLabelInst::Add,
+                Instruction::Sub => NoLabelInst::Sub,
+                Instruction::Mul => NoLabelInst::Mul,
+                Instruction::Div => NoLabelInst::Div,
+                Instruction::Mod => NoLabelInst::Mod,
+                Instruction::And => NoLabelInst::And,
+                Instruction::Or => NoLabelInst::Or,
+                Instruction::Not => NoLabelInst::Not,
+                Instruction::Xor => NoLabelInst::Xor,
+                Instruction::Eq => NoLabelInst::Eq,
+                Instruction::L => NoLabelInst::L,
+                Instruction::Le => NoLabelInst::Le,
+                Instruction::G => NoLabelInst::G,
+                Instruction::Ge => NoLabelInst::Ge,
+                Instruction::Jmp(s) => NoLabelInst::Jmp(*map.get(s).expect("Invalid asm")),
+                Instruction::Jz(s) => NoLabelInst::Jz(*map.get(s).expect("Invalid asm")),
+                Instruction::Jnz(s) => NoLabelInst::Jnz(*map.get(s).expect("Invalid asm")),
+                Instruction::Call(s) => NoLabelInst::Call(*map.get(s).expect("Invalid asm")),
+                Instruction::Fun(x) => NoLabelInst::Fun(*x),
+                Instruction::Label(_) => unreachable!(),
+            })
         }
         out
     }

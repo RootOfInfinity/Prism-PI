@@ -63,16 +63,17 @@ impl TypeChecker {
                         Type::Int,
                         Type::Int,
                     ) => Type::Int,
-                    (
-                        Operator::Add | Operator::Sub | Operator::Mult | Operator::Div,
-                        Type::Dcml,
-                        Type::Int,
-                    ) => Type::Dcml,
-                    (
-                        Operator::Add | Operator::Sub | Operator::Mult | Operator::Div,
-                        Type::Int,
-                        Type::Dcml,
-                    ) => Type::Dcml,
+                    // Through research, I have found Rust does not add ints to floats
+                    // (
+                    //     Operator::Add | Operator::Sub | Operator::Mult | Operator::Div,
+                    //     Type::Dcml,
+                    //     Type::Int,
+                    // ) => Type::Dcml,
+                    // (
+                    //     Operator::Add | Operator::Sub | Operator::Mult | Operator::Div,
+                    //     Type::Int,
+                    //     Type::Dcml,
+                    // ) => Type::Dcml,
                     (
                         Operator::Add | Operator::Sub | Operator::Mult | Operator::Div,
                         Type::Dcml,
@@ -99,9 +100,10 @@ impl TypeChecker {
                     (Operator::BAnd | Operator::BOr | Operator::BXor, Type::Int, Type::Int) => {
                         Type::Int
                     }
-                    (Operator::BAnd | Operator::BOr | Operator::BXor, Type::Dcml, Type::Dcml) => {
-                        Type::Dcml
-                    }
+                    // BitAnd is not implemented for f64
+                    // (Operator::BAnd | Operator::BOr | Operator::BXor, Type::Dcml, Type::Dcml) => {
+                    //     Type::Dcml
+                    // }
                     (Operator::BAnd | Operator::BOr | Operator::BXor, Type::Bool, Type::Bool) => {
                         Type::Bool
                     }
