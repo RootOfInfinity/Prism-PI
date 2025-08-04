@@ -413,7 +413,7 @@ fn get_inst_size(instruction_num: u8) -> usize {
     }
 }
 
-fn get_type_size(type_num: u8) -> usize {
+pub fn get_type_size(type_num: u8) -> usize {
     (match type_num {
         INT_NUM => size_of::<i32>(),
         DCML_NUM => size_of::<f64>(),
