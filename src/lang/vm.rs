@@ -37,13 +37,13 @@ const CALLSTACK_NUM: u8 = 5;
 
 pub struct VM {
     ip: usize,
-    consts: (Vec<u8>, Vec<Type>),
+    consts: Vec<u8>,
     inst: Vec<u8>,
     stack: Vec<u8>,
     pool: Vec<String>,
 }
 impl VM {
-    pub fn new(pool: Vec<String>, consts: (Vec<u8>, Vec<Type>), inst: Vec<u8>) -> Self {
+    pub fn new(pool: Vec<String>, consts: Vec<u8>, inst: Vec<u8>) -> Self {
         VM {
             ip: 0,
             consts,
@@ -302,7 +302,28 @@ impl VM {
         }
     }
     fn get_const_wrapped(&self, byte_index_of_const: u16) -> WrappedVal {
-        todo!()
+        let datatype = self.consts[byte_index_of_const as usize];
+        let data = &self.consts[(byte_index_of_const as usize + 1)
+            ..(byte_index_of_const as usize + get_type_size(datatype))];
+        match datatype {
+            INT_NUM => {
+                let int = i32::from_le_bytes(data.try_into().unwrap());
+                WrappedVal::Int(int)
+            }
+            DCML_NUM => {
+                let dcml = f64::from_le_bytes(data.try_into().unwrap());
+                WrappedVal::Dcml(dcml)
+            }
+            BOOL_NUM => {
+                let boolean = data[0] != 0;
+                WrappedVal::Bool(boolean)
+            }
+            STRING_NUM => {
+                let string_ind = u16::from_le_bytes(data.try_into().unwrap());
+                WrappedVal::String(string_ind)
+            }
+            _ => unreachable!(),
+        }
     }
     fn pop_stack_top_wrapped(&mut self) -> WrappedVal {
         let ans = self.wrap_stack_val(0);
