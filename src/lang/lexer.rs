@@ -96,6 +96,7 @@ impl LexEngine {
                     "true" => Token::Lit(Literal::Bool(true)),
                     "false" => Token::Lit(Literal::Bool(false)),
                     "return" => Token::Return,
+                    "become" => Token::Cast,
                     x => Token::Ident(x.to_owned()),
                 },
                 Loc {
@@ -231,6 +232,15 @@ impl LexEngine {
                 },
                 Loc::new(self.line, self.col),
             ));
+        }
+        if self.cur_char == '.' {
+            self.eat_char();
+            let mut dot_str = String::new();
+            while self.is_alpha(false) {
+                dot_str.push(self.cur_char);
+                self.eat_char();
+            }
+            return Ok((Token::Dot(dot_str), Loc::new(self.line, self.col)));
         }
         eprintln!(
             "Did not know what to do with {}. I got no clue ngl",

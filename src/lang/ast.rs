@@ -15,6 +15,15 @@ pub enum ExprAST {
     Lit(Literal),
     BinOp(Operator, Box<ExprAST>, Box<ExprAST>),
     Call(String, Vec<Expression>),
+    Casted(Type, Box<ExprAST>),
+    DotOp(DotOp, Box<ExprAST>),
+}
+
+#[derive(Clone, Debug)]
+pub enum DotOp {
+    Len,
+    Push(Box<ExprAST>),
+    Pop,
 }
 
 #[derive(Clone, Debug)]

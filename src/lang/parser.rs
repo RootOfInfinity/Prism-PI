@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::lang::ast::Assignment;
 
-use super::ast::{Declaration, Expression, IfBlock, Return, WhileBlock};
+use super::ast::{Declaration, DotOp, Expression, IfBlock, Return, WhileBlock};
 
 use super::tokens::Operator;
 use super::{
@@ -315,18 +315,55 @@ impl ParsingMachine {
         return Ok(expr);
     }
     fn parse_primary(&mut self) -> Result<ExprAST, CompileError> {
-        match &self.cur_tok.0 {
-            Token::Ident(_) => self.parse_ident(),
+        let ans = match &self.cur_tok.0 {
+            Token::Ident(_) => self.parse_ident()?,
             Token::Lit(lit) => {
-                let ans = Ok(ExprAST::Lit(lit.clone()));
+                let ans = ExprAST::Lit(lit.clone());
                 self.eat_tok();
                 ans
             }
-            Token::LeftParen => self.parse_paren(),
+            Token::LeftParen => self.parse_paren()?,
             _ => {
-                Err(self
-                    .err("Expected an Identifier, Literal, or '(', got unknown token".to_string()))
+                return Err(self.err(
+                    "Expected an Identifier, Literal, or '(', got unknown token".to_string(),
+                ));
             }
+        };
+        match self.cur_tok.0 {
+            Token::Dot(ref d_str) => {
+                let d_str = d_str.to_owned();
+                self.eat_tok();
+                let dot_op = match d_str.as_str() {
+                    "len" => DotOp::Len,
+                    "pop" => DotOp::Pop,
+                    "push" => {
+                        let Token::LeftParen = self.cur_tok.0 else {
+                            return Err(self.err(format!("Expected '(' after push statement")));
+                        };
+                        let expr = self.parse_paren()?;
+                        DotOp::Push(Box::new(expr))
+                    }
+                    _ => {
+                        return Err(
+                            self.err(format!("Found unexpected token after dot_op: '{}'", d_str))
+                        );
+                    }
+                };
+                return Ok(ExprAST::DotOp(dot_op, Box::new(ans)));
+            }
+            Token::Cast => {
+                self.eat_tok();
+                if let Token::DeclareType(data_type) = self.cur_tok.0.to_owned() {
+                    self.eat_tok();
+                    return Ok(ExprAST::Casted(data_type, Box::new(ans)));
+                } else {
+                    return Err(self.err(format!(
+                        "Expected datatype after cast, found {:#?}",
+                        self.cur_tok.0
+                    )));
+                }
+            }
+            _ => return Ok(ans),
         }
     }
 

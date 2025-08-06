@@ -25,6 +25,7 @@ mod wrapped_val;
 // error handling
 mod errors;
 // semantic analysis
+mod array;
 mod ctrlflow;
 mod typecheck;
 // debugging

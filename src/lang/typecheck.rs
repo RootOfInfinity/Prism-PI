@@ -140,6 +140,26 @@ impl TypeChecker {
                 }
                 Ok(output.to_owned())
             }
+            ExprAST::Casted(ref datatype, expr) => {
+                let expr_type = self.check_expr(*expr, loc.to_owned(), &varmap)?;
+                Ok(match (expr_type, datatype) {
+                    (Type::Int, Type::Dcml) => Type::Dcml,
+                    (Type::Dcml, Type::Int) => Type::Int,
+                    (Type::Bool, Type::Int) => Type::Int,
+                    (x, y) => {
+                        let err = self.err(
+                            &loc,
+                            &format!("Cannot cast type '{:#?}' to type '{:#?}'", x, y,),
+                        );
+                        self.add_err(err.clone());
+                        return Err(err);
+                    }
+                })
+            }
+            ExprAST::DotOp(dot_op, expr) => {
+                todo!()
+                //TODO when array type is actually implemented.
+            }
         }
     }
     fn check_statement(

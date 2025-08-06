@@ -6,7 +6,7 @@ use std::{
 
 use super::{
     asm::Instruction,
-    ast::{Assignment, ExprAST, FunctionAst, Statement},
+    ast::{Assignment, DotOp, ExprAST, FunctionAst, Statement},
     tokens::{Literal, Operator, Type},
     vm::get_type_size,
 };
@@ -203,6 +203,21 @@ impl FuncCompiler {
                 self.stack_top += self.ret_types.get(&s).unwrap().size() as u16;
                 self.code.push(Instruction::Call(s));
             }
+            ExprAST::Casted(t, expr) => {
+                self.compile_expr(*expr);
+                self.code.push(Instruction::Cast(t));
+            }
+            ExprAST::DotOp(dot_op, expr) => {
+                self.compile_expr(*expr);
+                match dot_op {
+                    DotOp::Len => self.code.push(Instruction::ArrLen),
+                    DotOp::Pop => self.code.push(Instruction::ArrPop),
+                    DotOp::Push(expr) => {
+                        self.compile_expr(*expr);
+                        self.code.push(Instruction::ArrPush);
+                    }
+                }
+            }
         }
     }
     fn compile_statement(&mut self, statement: Statement) {
@@ -398,6 +413,12 @@ impl CompilerComposer {
                 for expr in exprvec {
                     self.create_consts_in_expr(expr.expr);
                 }
+            }
+            ExprAST::Casted(_, expr) => {
+                self.create_consts_in_expr(*expr);
+            }
+            ExprAST::DotOp(_, expr) => {
+                self.create_consts_in_expr(*expr);
             }
         }
     }

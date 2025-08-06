@@ -1,3 +1,5 @@
+use super::tokens::Type;
+
 #[derive(PartialEq)]
 pub enum WrappedVal {
     CallStack(u32),
@@ -5,6 +7,17 @@ pub enum WrappedVal {
     Dcml(f64),
     Bool(bool),
     String(u16),
+}
+impl WrappedVal {
+    pub fn type_enum(&self) -> Type {
+        match self {
+            WrappedVal::CallStack(_) => Type::CallStack,
+            WrappedVal::Int(_) => Type::Int,
+            WrappedVal::Dcml(_) => Type::Dcml,
+            WrappedVal::Bool(_) => Type::Bool,
+            WrappedVal::String(_) => Type::String,
+        }
+    }
 }
 impl std::ops::Add for WrappedVal {
     type Output = Self;

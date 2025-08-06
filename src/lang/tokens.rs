@@ -21,6 +21,8 @@ pub enum Token {
     Return,
     RArrow,
     EndOfFile,
+    Dot(String),
+    Cast,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +69,20 @@ impl Type {
             Type::String => 2,
             Type::CallStack => 4,
         }) + 1
+    }
+    pub fn to_num(&self) -> u8 {
+        const INT_NUM: u8 = 1;
+        const DCML_NUM: u8 = 2;
+        const BOOL_NUM: u8 = 3;
+        const STRING_NUM: u8 = 4;
+        const CALLSTACK_NUM: u8 = 5;
+        match self {
+            Type::Int => INT_NUM,
+            Type::Dcml => DCML_NUM,
+            Type::Bool => BOOL_NUM,
+            Type::String => STRING_NUM,
+            Type::CallStack => CALLSTACK_NUM,
+        }
     }
 }
 

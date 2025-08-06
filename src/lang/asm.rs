@@ -25,6 +25,10 @@ const JZ_NUM: u8 = 20;
 const JNZ_NUM: u8 = 21;
 const CALL_NUM: u8 = 22;
 const FUN_NUM: u8 = 23;
+const CAST_NUM: u8 = 24;
+const ARRLEN_NUM: u8 = 25;
+const ARRPOP_NUM: u8 = 26;
+const ARRPUSH_NUM: u8 = 27;
 
 pub struct Assembler {
     consts: (Vec<u8>, Vec<Type>),
@@ -89,6 +93,13 @@ impl Assembler {
                     bc.push(FUN_NUM);
                     bc.extend_from_slice(&x.to_le_bytes());
                 }
+                NoLabelInst::Cast(x) => {
+                    bc.push(CAST_NUM);
+                    bc.push(x);
+                }
+                NoLabelInst::ArrLen => bc.push(ARRLEN_NUM),
+                NoLabelInst::ArrPop => bc.push(ARRPOP_NUM),
+                NoLabelInst::ArrPush => bc.push(ARRPUSH_NUM),
             }
         }
         (self.consts, self.pool, bc)
@@ -136,6 +147,10 @@ impl Assembler {
                 Instruction::Call(s) => NoLabelInst::Call(*map.get(s).expect("Invalid asm")),
                 Instruction::Fun(x) => NoLabelInst::Fun(*x),
                 Instruction::Label(_) => unreachable!(),
+                Instruction::Cast(datatype) => NoLabelInst::Cast(datatype.to_num()),
+                Instruction::ArrLen => NoLabelInst::ArrLen,
+                Instruction::ArrPop => NoLabelInst::ArrPop,
+                Instruction::ArrPush => NoLabelInst::ArrPush,
             })
         }
         out
@@ -165,6 +180,10 @@ pub enum NoLabelInst {
     Jnz(u32),
     Call(u32),
     Fun(u16),
+    Cast(u8),
+    ArrLen,
+    ArrPop,
+    ArrPush,
 }
 
 //bytetext asm has labels
@@ -194,6 +213,10 @@ pub enum Instruction {
     Call(String),
     Fun(u16),
     Label(String),
+    Cast(Type),
+    ArrLen,
+    ArrPop,
+    ArrPush,
 }
 impl Instruction {
     fn size(&self) -> u32 {
@@ -222,6 +245,10 @@ impl Instruction {
             Instruction::Call(_) => 5,
             Instruction::Fun(_) => 3,
             Instruction::Label(_) => 0,
+            Instruction::Cast(_) => 2,
+            Instruction::ArrLen => 1,
+            Instruction::ArrPop => 1,
+            Instruction::ArrPush => 1,
         }
     }
 }
@@ -282,6 +309,22 @@ impl fmt::Display for Instruction {
                 others.push(x.to_string());
                 "fun"
             }
+            Instruction::Cast(x) => {
+                others.push(
+                    match x {
+                        Type::Int => "int",
+                        Type::Dcml => "dcml",
+                        Type::Bool => "bool",
+                        Type::String => "string",
+                        Type::CallStack => "callstack",
+                    }
+                    .to_string(),
+                );
+                "cast"
+            }
+            Instruction::ArrLen => "arrlen",
+            Instruction::ArrPop => "arrpop",
+            Instruction::ArrPush => "arrpush",
         };
         for thing in others {
             ans += " ";
