@@ -316,7 +316,18 @@ impl ParsingMachine {
     }
     fn parse_primary(&mut self) -> Result<ExprAST, CompileError> {
         let ans = match &self.cur_tok.0 {
-            Token::Ident(_) => self.parse_ident()?,
+            Token::Ident(_) => {
+                let ident_expr = self.parse_ident()?;
+                if let Token::LeftBrack = self.cur_tok.0 {
+                    let index_expr = self.parse_expression()?;
+                    let Token::RightBrack = self.cur_tok.0 else {
+                        todo!()
+                    };
+                    ExprAST::Indexed(Box::new(ident_expr), Box::new(index_expr.expr))
+                } else {
+                    ident_expr
+                }
+            }
             Token::Lit(lit) => {
                 let ans = ExprAST::Lit(lit.clone());
                 self.eat_tok();

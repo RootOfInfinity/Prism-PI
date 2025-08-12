@@ -29,17 +29,17 @@ const CAST_NUM: u8 = 24;
 const ARRLEN_NUM: u8 = 25;
 const ARRPOP_NUM: u8 = 26;
 const ARRPUSH_NUM: u8 = 27;
+const FREEARR_NUM: u8 = 28;
+const ARRIND_NUM: u8 = 29;
 
 pub struct Assembler {
-    consts: (Vec<u8>, Vec<Type>),
-    pool: Vec<String>,
     code: Vec<Instruction>,
 }
 impl Assembler {
-    pub fn new(consts: (Vec<u8>, Vec<Type>), pool: Vec<String>, code: Vec<Instruction>) -> Self {
-        Assembler { consts, pool, code }
+    pub fn new(code: Vec<Instruction>) -> Self {
+        Assembler { code }
     }
-    pub fn assemble(self) -> ((Vec<u8>, Vec<Type>), Vec<String>, Vec<u8>) {
+    pub fn assemble(self) -> Vec<u8> {
         let no_labels = self.real_rm_labels();
         let mut bc: Vec<u8> = Vec::new();
         for inst in no_labels {
@@ -100,9 +100,11 @@ impl Assembler {
                 NoLabelInst::ArrLen => bc.push(ARRLEN_NUM),
                 NoLabelInst::ArrPop => bc.push(ARRPOP_NUM),
                 NoLabelInst::ArrPush => bc.push(ARRPUSH_NUM),
+                NoLabelInst::FreeArr => bc.push(FREEARR_NUM),
+                NoLabelInst::ArrInd => bc.push(ARRIND_NUM),
             }
         }
-        (self.consts, self.pool, bc)
+        bc
     }
     fn real_rm_labels(&self) -> Vec<NoLabelInst> {
         let mut map: HashMap<String, u32> = HashMap::new();
@@ -151,6 +153,8 @@ impl Assembler {
                 Instruction::ArrLen => NoLabelInst::ArrLen,
                 Instruction::ArrPop => NoLabelInst::ArrPop,
                 Instruction::ArrPush => NoLabelInst::ArrPush,
+                Instruction::FreeArr => NoLabelInst::FreeArr,
+                Instruction::ArrInd => NoLabelInst::ArrInd,
             })
         }
         out
@@ -184,6 +188,8 @@ pub enum NoLabelInst {
     ArrLen,
     ArrPop,
     ArrPush,
+    FreeArr,
+    ArrInd,
 }
 
 //bytetext asm has labels
@@ -217,6 +223,8 @@ pub enum Instruction {
     ArrLen,
     ArrPop,
     ArrPush,
+    FreeArr,
+    ArrInd,
 }
 impl Instruction {
     fn size(&self) -> u32 {
@@ -249,6 +257,8 @@ impl Instruction {
             Instruction::ArrLen => 1,
             Instruction::ArrPop => 1,
             Instruction::ArrPush => 1,
+            Instruction::FreeArr => 1,
+            Instruction::ArrInd => 1,
         }
     }
 }
@@ -317,6 +327,8 @@ impl fmt::Display for Instruction {
                         Type::Bool => "bool",
                         Type::String => "string",
                         Type::CallStack => "callstack",
+                        Type::Array(_) => "array",
+                        Type::Void => "VOID",
                     }
                     .to_string(),
                 );
@@ -325,6 +337,8 @@ impl fmt::Display for Instruction {
             Instruction::ArrLen => "arrlen",
             Instruction::ArrPop => "arrpop",
             Instruction::ArrPush => "arrpush",
+            Instruction::FreeArr => "freearr",
+            Instruction::ArrInd => "arrind",
         };
         for thing in others {
             ans += " ";
@@ -335,8 +349,10 @@ impl fmt::Display for Instruction {
 }
 
 pub fn print_instructions(inst_vec: &Vec<Instruction>) {
-    println!("INSTRUCTIONS:");
-    for (i, inst) in inst_vec.iter().enumerate() {
-        println!("{} -- {}", i, inst);
+    println!("INSTRUCTIONS:\nBYTE INDEX -- INSTRUCTION");
+    let mut byte_index = 0;
+    for inst in inst_vec.iter() {
+        println!("{} -- {}", byte_index, inst);
+        byte_index += inst.size();
     }
 }

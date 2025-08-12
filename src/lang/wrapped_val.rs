@@ -1,12 +1,13 @@
 use super::tokens::Type;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum WrappedVal {
     CallStack(u32),
     Int(i32),
     Dcml(f64),
     Bool(bool),
     String(u16),
+    Array(u16),
 }
 impl WrappedVal {
     pub fn type_enum(&self) -> Type {
@@ -16,6 +17,8 @@ impl WrappedVal {
             WrappedVal::Dcml(_) => Type::Dcml,
             WrappedVal::Bool(_) => Type::Bool,
             WrappedVal::String(_) => Type::String,
+            // The VM doesn't need to know what is in an array until the very moment.
+            WrappedVal::Array(_) => Type::Array(Box::new(Type::Int)),
         }
     }
 }
@@ -212,7 +215,10 @@ impl std::cmp::PartialOrd for WrappedVal {
                 };
                 lhs <= rhs
             }
-            _ => unreachable!(),
+            _ => {
+                println!("{:#?} <= {:#?}", self, other);
+                unreachable!();
+            }
         }
     }
     fn gt(&self, other: &Self) -> bool {

@@ -5,7 +5,7 @@ use crate::lang::{ast::Assignment, tokens::Operator};
 use super::{
     ast::{ExprAST, Expression, FunctionAst, IfBlock, Loc, Statement},
     errors::{CompileError, ErrorType},
-    tokens::Type,
+    tokens::{Literal, Type},
 };
 
 pub struct TypeChecker {
@@ -13,6 +13,7 @@ pub struct TypeChecker {
     funcmap: HashMap<String, (Vec<Type>, Type)>,
     errors: Vec<CompileError>,
 }
+//TODO implement void type for typechecker so we can have functions that don't return.
 impl TypeChecker {
     pub fn new(ast: Vec<FunctionAst>) -> Self {
         TypeChecker {
@@ -159,6 +160,10 @@ impl TypeChecker {
             ExprAST::DotOp(dot_op, expr) => {
                 todo!()
                 //TODO when array type is actually implemented.
+            }
+            ExprAST::Indexed(to_be_indexed, index) => {
+                todo!()
+                //TODO when array type is fully implemented.
             }
         }
     }
@@ -313,5 +318,28 @@ impl TypeChecker {
             }
         }
         self.errors.push(error);
+    }
+    pub fn get_binop_type_panic(t0: Type, t1: Type, op: &Operator) -> Type {
+        let mut tycheck = TypeChecker::new(Vec::new());
+        let bogus0 = match t0 {
+            Type::Int => ExprAST::Lit(Literal::Int(0)),
+            Type::Dcml => ExprAST::Lit(Literal::Dcml(0.0)),
+            Type::Bool => ExprAST::Lit(Literal::Bool(false)),
+            Type::String => ExprAST::Lit(Literal::String(String::new())),
+            _ => panic!(),
+        };
+        let bogus1 = match t1 {
+            Type::Int => ExprAST::Lit(Literal::Int(0)),
+            Type::Dcml => ExprAST::Lit(Literal::Dcml(0.0)),
+            Type::Bool => ExprAST::Lit(Literal::Bool(false)),
+            Type::String => ExprAST::Lit(Literal::String(String::new())),
+            _ => panic!(),
+        };
+        let binop = ExprAST::BinOp(op.to_owned(), Box::new(bogus0), Box::new(bogus1));
+        let datatype = tycheck.check_expr(binop, Loc::new(0, 0), &HashMap::new());
+        if let Ok(res) = datatype {
+            return res;
+        }
+        panic!()
     }
 }

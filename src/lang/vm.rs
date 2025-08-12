@@ -1,5 +1,7 @@
+use core::panic;
 use std::any::TypeId;
 
+use super::array::Array;
 use super::tokens::Type;
 use super::wrapped_val::WrappedVal;
 
@@ -27,6 +29,12 @@ const JZ_NUM: u8 = 20;
 const JNZ_NUM: u8 = 21;
 const CALL_NUM: u8 = 22;
 const FUN_NUM: u8 = 23;
+const CAST_NUM: u8 = 24;
+const ARRLEN_NUM: u8 = 25;
+const ARRPOP_NUM: u8 = 26;
+const ARRPUSH_NUM: u8 = 27;
+const FREEARR_NUM: u8 = 28;
+const ARRIND_NUM: u8 = 29;
 
 // Constant identifiers for types
 const INT_NUM: u8 = 1;
@@ -34,6 +42,7 @@ const DCML_NUM: u8 = 2;
 const BOOL_NUM: u8 = 3;
 const STRING_NUM: u8 = 4;
 const CALLSTACK_NUM: u8 = 5;
+const ARRAY_NUM: u8 = 6;
 
 pub struct VM {
     ip: usize,
@@ -41,6 +50,7 @@ pub struct VM {
     inst: Vec<u8>,
     stack: Vec<u8>,
     pool: Vec<String>,
+    array_stack: Vec<Array>,
 }
 impl VM {
     pub fn new(pool: Vec<String>, consts: Vec<u8>, inst: Vec<u8>) -> Self {
@@ -50,6 +60,7 @@ impl VM {
             inst,
             pool,
             stack: Vec::new(),
+            array_stack: Vec::new(),
         }
     }
     pub fn execute_order_66(&mut self) -> i32 {
@@ -57,6 +68,8 @@ impl VM {
             if let ProgState::Halt(x) = self.eval_inst() {
                 break x;
             }
+            // println!("Whole Stack: {:#?}", self.get_entire_stack_wrapped());
+            // println!("New IP: {}", self.ip);
         }
     }
     fn eval_inst(&mut self) -> ProgState {
@@ -70,14 +83,19 @@ impl VM {
                     self.inst[(st)..(st + size_of::<u16>())].try_into().unwrap(),
                 );
                 let ret_val = self.pop_stack_top_wrapped();
-                for _ in 0..how_much_bytes_to_pop {
+                // println!("Function returned: {:#?}", ret_val);
+                for _ in 0..(how_much_bytes_to_pop - ret_val.type_enum().size() as u16) {
                     self.stack.pop();
                 }
                 // after this, there should be a number on the stack
                 // that will point to where the function was called from.
                 // It will have a unique identifier, and if that identifier is not
                 // found, then we are in main, and return with the top thing on the stack.
-                if self.stack[self.stack.len() - 1] == CALLSTACK_NUM {
+                // println!(
+                //     "RIGHT BEFORE RETURN WHOLE STACK! {:#?}",
+                //     self.get_entire_stack_wrapped()
+                // );
+                if self.stack.len() > 0 && self.stack[self.stack.len() - 1] == CALLSTACK_NUM {
                     self.ip = u32::from_le_bytes(
                         self.stack
                             [(self.stack.len() - 1 - size_of::<u32>())..(self.stack.len() - 1)]
@@ -121,7 +139,7 @@ impl VM {
                 }
             }
             POP_NUM => {
-                let size = match self.stack[self.stack.len()] {
+                let size = match self.stack[self.stack.len() - 1] {
                     INT_NUM => 4,
                     DCML_NUM => 8,
                     BOOL_NUM => 1,
@@ -248,17 +266,90 @@ impl VM {
                 self.ip = jump_to as usize;
             }
             FUN_NUM => {
-                let callstack = self.pop_stack_top_wrapped();
-                let mut argvec = Vec::new();
-                let arg_amount =
-                    u16::from_le_bytes(self.inst[st..(st + size_of::<u16>())].try_into().unwrap());
-                for _ in 0..arg_amount {
-                    argvec.push(self.pop_stack_top_wrapped());
+                let is_main = self.stack.len() == 0;
+
+                if !is_main {
+                    let callstack = self.pop_stack_top_wrapped();
+                    let mut argvec = Vec::new();
+                    let arg_amount = u16::from_le_bytes(
+                        self.inst[st..(st + size_of::<u16>())].try_into().unwrap(),
+                    );
+                    for _ in 0..arg_amount {
+                        argvec.push(self.pop_stack_top_wrapped());
+                    }
+                    self.push_wrapped(callstack);
+                    for wrap in argvec.into_iter().rev() {
+                        self.push_wrapped(wrap);
+                    }
                 }
-                self.push_wrapped(callstack);
-                for wrap in argvec.into_iter().rev() {
-                    self.push_wrapped(wrap);
-                }
+            }
+            CAST_NUM => {
+                let to_type = self.inst[st];
+                let val = self.pop_stack_top_wrapped();
+                let new_val = match val {
+                    WrappedVal::Int(int) => {
+                        if to_type == DCML_NUM {
+                            WrappedVal::Dcml(int as f64)
+                        } else {
+                            unreachable!()
+                        }
+                    }
+                    WrappedVal::Dcml(dcml) => {
+                        if to_type == INT_NUM {
+                            WrappedVal::Int(dcml as i32)
+                        } else {
+                            unreachable!()
+                        }
+                    }
+                    WrappedVal::Bool(boolean) => {
+                        if to_type == INT_NUM {
+                            WrappedVal::Int(boolean as i32)
+                        } else {
+                            unreachable!()
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                self.push_wrapped(new_val);
+            }
+            ARRLEN_NUM => {
+                let arr = self.pop_stack_top_wrapped();
+                let WrappedVal::Array(arr_ind) = arr else {
+                    panic!()
+                };
+                let arraylen = self.array_stack[arr_ind as usize].length();
+                self.push_wrapped(WrappedVal::Int(arraylen));
+            }
+            ARRPOP_NUM => {
+                let arr = self.wrap_stack_val(0);
+                let WrappedVal::Array(arr_ind) = arr else {
+                    panic!()
+                };
+                let array = &mut self.array_stack[arr_ind as usize];
+                array.pop();
+            }
+            ARRPUSH_NUM => {
+                let var = self.pop_stack_top_wrapped();
+                let arr = self.wrap_stack_val(0);
+                let WrappedVal::Array(arr_ind) = arr else {
+                    panic!()
+                };
+                let array = &mut self.array_stack[arr_ind as usize];
+                array.push_wrap(var);
+            }
+            ARRIND_NUM => {
+                let WrappedVal::Int(index) = self.pop_stack_top_wrapped() else {
+                    panic!()
+                };
+                let WrappedVal::Array(arr_ind) = self.pop_stack_top_wrapped() else {
+                    panic!()
+                };
+                let array = &mut self.array_stack[arr_ind as usize];
+                let wrap_val = array.index(index);
+                self.push_wrapped(wrap_val);
+            }
+            FREEARR_NUM => {
+                self.array_stack.pop();
             }
             _ => unreachable!(),
         }
@@ -371,6 +462,14 @@ impl VM {
                 );
                 WrappedVal::CallStack(new_ip)
             }
+            ARRAY_NUM => {
+                let array_ind = u16::from_le_bytes(
+                    self.stack[self.stack.len() - off - size_of::<u16>()..self.stack.len() - off]
+                        .try_into()
+                        .unwrap(),
+                );
+                WrappedVal::Array(array_ind)
+            }
             _ => unreachable!(),
         }
     }
@@ -396,7 +495,29 @@ impl VM {
                 self.stack.extend_from_slice(&new_ip.to_le_bytes());
                 self.stack.push(CALLSTACK_NUM);
             }
+            WrappedVal::Array(array_ind) => {
+                self.stack.extend_from_slice(&array_ind.to_le_bytes());
+                self.stack.push(ARRAY_NUM);
+            }
         }
+    }
+    // costly
+    fn get_entire_stack_wrapped(&mut self) -> Vec<WrappedVal> {
+        let mut byte_off = 0;
+        let mut vals = Vec::new();
+        let len = self.stack.len();
+        loop {
+            if byte_off >= len {
+                break;
+            }
+            let datatype = self.stack[len - byte_off - 1];
+            let typesize = get_type_size(datatype);
+            let wrap_val = self.wrap_stack_val(byte_off as u16);
+            byte_off += typesize;
+            vals.push(wrap_val);
+        }
+        vals.reverse();
+        vals
     }
 }
 
@@ -441,6 +562,9 @@ pub fn get_type_size(type_num: u8) -> usize {
         BOOL_NUM => size_of::<bool>(),
         STRING_NUM => size_of::<u16>(),
         CALLSTACK_NUM => size_of::<u32>(),
-        _ => unreachable!(),
+        _ => {
+            // println!("Number: {}", type_num);
+            unreachable!();
+        }
     }) + 1
 }

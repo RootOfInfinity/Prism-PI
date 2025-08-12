@@ -58,6 +58,8 @@ pub enum Type {
     Bool,      // 3
     String,    // 4
     CallStack, // 5
+    Array(Box<Type>),
+    Void,
 }
 impl Type {
     //size in bytes including tag at end
@@ -68,6 +70,10 @@ impl Type {
             Type::Bool => 1,
             Type::String => 2,
             Type::CallStack => 4,
+            Type::Array(_) => 2,
+            Type::Void => {
+                panic!("Tried to see size of void");
+            }
         }) + 1
     }
     pub fn to_num(&self) -> u8 {
@@ -76,12 +82,17 @@ impl Type {
         const BOOL_NUM: u8 = 3;
         const STRING_NUM: u8 = 4;
         const CALLSTACK_NUM: u8 = 5;
+        const ARRAY_NUM: u8 = 6;
         match self {
             Type::Int => INT_NUM,
             Type::Dcml => DCML_NUM,
             Type::Bool => BOOL_NUM,
             Type::String => STRING_NUM,
             Type::CallStack => CALLSTACK_NUM,
+            Type::Array(_) => ARRAY_NUM,
+            Type::Void => {
+                panic!("Tried to get the num convert of void");
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ use super::{
     asm::Instruction,
     ast::{Assignment, DotOp, ExprAST, FunctionAst, Statement},
     tokens::{Literal, Operator, Type},
+    typecheck::TypeChecker,
     vm::get_type_size,
 };
 
@@ -16,6 +17,7 @@ const DCML_NUM: u8 = 2;
 const BOOL_NUM: u8 = 3;
 const STRING_NUM: u8 = 4;
 const CALLSTACK_NUM: u8 = 5;
+const ARRAY_NUM: u8 = 6;
 
 /// func compiler handles the trenches of the compiling stage
 /// the real variable declarations
@@ -26,14 +28,14 @@ pub struct FuncCompiler {
     consts: Arc<Vec<u8>>,
     pool: Arc<Vec<String>>,
     ret_types: Arc<HashMap<String, Type>>,
-    // ret_types tells it how much mem to allocate to stack_top
+    // ret_types tells it how much mem to allocate to amount_in_stack
     // when a call is given.
     code: Vec<Instruction>,
     func: FunctionAst,
     var_tracker: HashMap<String, (u16, Type)>,
     // SoF will always be zero
-    stack_top: u16,
-    scoped_vars: Vec<(u16, u16)>,
+    amount_in_stack: u16,
+    scoped_vars: Vec<(u16, u16, u16)>,
 }
 
 /// Compiler Composer is the manager, it first takes the funcs,
@@ -66,8 +68,8 @@ impl FuncCompiler {
             code: Vec::new(),
             func,
             var_tracker: HashMap::new(),
-            stack_top: 0,
-            scoped_vars: vec![(0, 0)],
+            amount_in_stack: 0,
+            scoped_vars: vec![(0, 0, 0)],
         }
     }
     pub fn get_const(consts: &(Vec<u8>), pool: &Vec<String>, lit: &Literal) -> Option<u16> {
@@ -166,99 +168,147 @@ impl FuncCompiler {
         }
     }
     fn track_var(&mut self, id: String, typ: Type) {
-        // doesn't increment stack_top
-        let ind = self.stack_top;
+        // doesn't increment amount_in_stack
+        let ind = self.amount_in_stack + typ.size() as u16 - 1;
+        self.amount_in_stack += typ.size() as u16;
         self.var_tracker.insert(id, (ind as u16, typ));
     }
     // gets the offset from the top of the var ident passed in
     fn get_var(&self, id: &String) -> (u16, Type) {
-        let vinfo = self.var_tracker.get(id).unwrap();
-        (self.stack_top as u16 - vinfo.0, vinfo.1.clone())
+        let (varindex, vartype) = self.var_tracker.get(id).unwrap();
+        (self.amount_in_stack as u16 - varindex, vartype.to_owned())
     }
     // recursively compiles the ExprAST and pushes it to self.code
-    fn compile_expr(&mut self, expr: ExprAST) {
+    fn compile_expr(&mut self, expr: ExprAST) -> Type {
         match expr {
             ExprAST::Var(x) => {
-                let vinfo = self.get_var(&x);
+                let (varoffset, vartype) = self.get_var(&x);
                 const PUSH_FROM_STACK: u8 = 0;
-                self.code.push(Instruction::Push(PUSH_FROM_STACK, vinfo.0));
-                self.stack_top += vinfo.1.size() as u16;
+                self.code
+                    .push(Instruction::Push(PUSH_FROM_STACK, varoffset));
+                self.amount_in_stack += vartype.size() as u16;
+                return vartype;
             } // find type of the var, and add memsize to stack
             ExprAST::Lit(x) => {
                 let ind = FuncCompiler::get_const(&self.consts, &self.pool, &x).unwrap();
                 let mem_size = x.get_type().size();
-                self.stack_top += mem_size as u16;
+                self.amount_in_stack += mem_size as u16;
                 const PUSH_FROM_CONSTS: u8 = 1;
                 self.code.push(Instruction::Push(PUSH_FROM_CONSTS, ind));
+                return x.get_type();
             }
             ExprAST::BinOp(op, x, y) => {
-                self.compile_expr(*x);
-                self.compile_expr(*y);
+                let t0 = self.compile_expr(*x);
+                let t1 = self.compile_expr(*y);
+                self.amount_in_stack -= t0.size() as u16;
+                self.amount_in_stack -= t1.size() as u16;
+                let endtype = TypeChecker::get_binop_type_panic(t0.to_owned(), t1.to_owned(), &op);
+                self.amount_in_stack += endtype.size() as u16;
+                // println!(
+                //     "After {:#?} {:#?} {:#?}: {}",
+                //     t0, op, t1, self.amount_in_stack
+                // );
                 self.compile_op(op);
+                return endtype;
             }
             ExprAST::Call(s, x) => {
+                let amount_in_stack_before = self.amount_in_stack;
                 for expr in x {
                     self.compile_expr(expr.expr);
                 }
-                self.stack_top += self.ret_types.get(&s).unwrap().size() as u16;
+                self.amount_in_stack = amount_in_stack_before;
+                let datatype = self.ret_types.get(&s).unwrap();
+                self.amount_in_stack += datatype.size() as u16;
                 self.code.push(Instruction::Call(s));
+                return datatype.to_owned();
             }
             ExprAST::Casted(t, expr) => {
-                self.compile_expr(*expr);
-                self.code.push(Instruction::Cast(t));
+                self.amount_in_stack -= self.compile_expr(*expr).size() as u16;
+                self.code.push(Instruction::Cast(t.to_owned()));
+                self.amount_in_stack += t.size() as u16;
+
+                return t;
             }
             ExprAST::DotOp(dot_op, expr) => {
-                self.compile_expr(*expr);
+                self.amount_in_stack -= self.compile_expr(*expr).size() as u16;
+
                 match dot_op {
-                    DotOp::Len => self.code.push(Instruction::ArrLen),
-                    DotOp::Pop => self.code.push(Instruction::ArrPop),
+                    DotOp::Len => {
+                        self.code.push(Instruction::ArrLen);
+                        self.amount_in_stack += Type::Int.size() as u16;
+                        return Type::Int;
+                    }
+                    DotOp::Pop => {
+                        self.code.push(Instruction::ArrPop);
+                        return Type::Void;
+                    }
                     DotOp::Push(expr) => {
                         self.compile_expr(*expr);
                         self.code.push(Instruction::ArrPush);
+                        return Type::Void;
                     }
                 }
+            }
+            ExprAST::Indexed(to_be_indexed, index) => {
+                let Type::Array(arr_type) = self.compile_expr(*to_be_indexed) else {
+                    unreachable!();
+                };
+                self.amount_in_stack -= get_type_size(ARRAY_NUM) as u16;
+                self.compile_expr(*index);
+                self.amount_in_stack -= get_type_size(INT_NUM) as u16;
+                self.code.push(Instruction::ArrInd);
+                self.amount_in_stack += arr_type.size() as u16;
+                return *arr_type;
             }
         }
     }
     fn compile_statement(&mut self, statement: Statement) {
         match statement {
             Statement::Expr(x) => {
-                let stack_top_before_expr = self.stack_top;
+                let amount_in_stack_before_expr = self.amount_in_stack;
                 self.compile_expr(x.expr);
                 self.code.push(Instruction::Pop);
-                self.stack_top = stack_top_before_expr;
+                self.amount_in_stack = amount_in_stack_before_expr;
+                // println!("After Expr: {}", self.amount_in_stack);
             }
             Statement::Decl(x) => {
                 self.compile_expr(x.val);
                 let len = self.scoped_vars.len();
+                if let Type::Array(_) = x.typ {
+                    self.scoped_vars[len - 1].2 += 1;
+                }
                 self.scoped_vars[len - 1].1 += x.typ.size() as u16;
                 self.track_var(x.ident, x.typ);
                 self.scoped_vars[len - 1].0 += 1;
+                // println!("After Decl: {}", self.amount_in_stack);
             }
             Statement::Assign(x) => {
-                let stack_top_before_expr = self.stack_top;
+                let amount_in_stack_before_expr = self.amount_in_stack;
                 self.compile_expr(x.val);
                 let vinfo = self.get_var(&x.ident);
                 self.code.push(Instruction::Mov(vinfo.0));
                 self.code.push(Instruction::Pop);
-                self.stack_top = stack_top_before_expr;
+                self.amount_in_stack = amount_in_stack_before_expr;
+                // println!("After Assign: {}", self.amount_in_stack);
             }
             Statement::Return(x) => {
                 self.compile_expr(x.expr.expr);
-                self.code.push(Instruction::Ret(self.stack_top as u16));
+                self.code
+                    .push(Instruction::Ret(self.amount_in_stack as u16));
                 // it tells the vm to go down by that much in the stack
+                // println!("After Return: {}", self.amount_in_stack);
             }
             Statement::If(x) => {
-                let stack_top_before_expr = self.stack_top;
+                let amount_in_stack_before_expr = self.amount_in_stack;
                 let start_ip = self.code.len();
-                self.compile_expr(x.cond.expr);
-                self.code.push(Instruction::Jz(format!(
+                self.amount_in_stack -= self.compile_expr(x.cond.expr).size() as u16;
+                self.code.push(Instruction::Jnz(format!(
                     "{}-if_{}_else",
                     self.func.name, start_ip
                 )));
-                self.code.push(Instruction::Pop);
+                // self.code.push(Instruction::Pop);
                 // scope start
-                self.scoped_vars.push((0, 0));
+                self.scoped_vars.push((0, 0, 0));
                 for st in x.tcode {
                     self.compile_statement(st);
                 }
@@ -273,9 +323,9 @@ impl FuncCompiler {
                     "{}-if_{}_else",
                     self.func.name, start_ip
                 )));
-                self.code.push(Instruction::Pop);
+                // self.code.push(Instruction::Pop);
 
-                self.scoped_vars.push((0, 0));
+                self.scoped_vars.push((0, 0, 0));
                 for st in x.ecode {
                     self.compile_statement(st);
                 }
@@ -285,23 +335,24 @@ impl FuncCompiler {
                     "{}-if_{}_end",
                     self.func.name, start_ip
                 )));
-                self.stack_top = stack_top_before_expr;
+                self.amount_in_stack = amount_in_stack_before_expr;
+                // println!("After If: {}", self.amount_in_stack);
             }
             Statement::While(x) => {
-                let stack_top_before_expr = self.stack_top;
+                let amount_in_stack_before_expr = self.amount_in_stack;
                 let start_ip = self.code.len();
                 self.code.push(Instruction::Label(format!(
                     "{}-while_{}",
                     self.func.name, start_ip
                 )));
                 self.compile_expr(x.cond.expr);
-                self.code.push(Instruction::Jz(format!(
+                self.code.push(Instruction::Jnz(format!(
                     "{}-while_{}_end",
                     self.func.name, start_ip
                 )));
-                self.code.push(Instruction::Pop);
+                // self.code.push(Instruction::Pop);
 
-                self.scoped_vars.push((0, 0));
+                self.scoped_vars.push((0, 0, 0));
                 for st in x.code {
                     self.compile_statement(st);
                 }
@@ -315,7 +366,8 @@ impl FuncCompiler {
                     "{}-while_{}_end",
                     self.func.name, start_ip
                 )));
-                self.stack_top = stack_top_before_expr;
+                self.amount_in_stack = amount_in_stack_before_expr;
+                // println!("After While: {}", self.amount_in_stack);
             }
         }
     }
@@ -323,30 +375,36 @@ impl FuncCompiler {
         for _ in 0..self.scoped_vars[self.scoped_vars.len() - 1].0 {
             self.code.push(Instruction::Pop);
         }
-        self.stack_top -= self.scoped_vars[self.scoped_vars.len() - 1].1;
+        for _ in 0..self.scoped_vars[self.scoped_vars.len() - 1].2 {
+            self.code.push(Instruction::FreeArr);
+        }
+        self.amount_in_stack -= self.scoped_vars[self.scoped_vars.len() - 1].1;
         self.scoped_vars.pop();
     }
     pub fn compile(mut self) -> Vec<Instruction> {
+        self.code
+            .push(Instruction::Label(self.func.name.to_owned()));
         let mut cur_byte_offset = 0;
         let mut from_top = Vec::new();
-        for arg in self.func.params.iter().rev() {
+        for (argstr, argtype) in self.func.params.iter().rev() {
             from_top.push(cur_byte_offset);
-            cur_byte_offset += arg.1.size();
+            cur_byte_offset += argtype.size();
         }
-        let stack_top;
+        let amount_in_stack;
         if self.func.params.len() > 0 {
-            stack_top = cur_byte_offset + self.func.params[0].1.size() - 1;
+            amount_in_stack = cur_byte_offset;
         } else {
-            stack_top = 0;
+            amount_in_stack = 0;
         }
         for ind in from_top.iter_mut().rev() {
-            *ind = stack_top - *ind;
+            *ind = amount_in_stack - *ind;
         }
         for ((id, typ), ind) in self.func.params.iter().zip(from_top.iter()) {
             self.var_tracker
                 .insert(id.clone(), (*ind as u16, typ.clone()));
         }
-        self.stack_top = stack_top as u16;
+        self.amount_in_stack = amount_in_stack as u16;
+        // println!("At start of func: {}", self.amount_in_stack);
         self.code
             .push(Instruction::Fun(self.func.params.len() as u16));
         for st in self.func.code.clone() {
@@ -420,6 +478,10 @@ impl CompilerComposer {
             ExprAST::DotOp(_, expr) => {
                 self.create_consts_in_expr(*expr);
             }
+            ExprAST::Indexed(ex0, ex1) => {
+                self.create_consts_in_expr(*ex0);
+                self.create_consts_in_expr(*ex1);
+            }
         }
     }
     fn add_const(&mut self, lit: &Literal) {
@@ -461,9 +523,21 @@ impl CompilerComposer {
         let arc_ret = Arc::new(ret_types);
         let (tx, rx) = mpsc::channel();
         let mut handles = Vec::new();
+        let mut funcs = self.funcs.clone();
+        let mut i = 0;
+        let main_func = loop {
+            if i >= funcs.len() {
+                break None;
+            }
+            if funcs[i].name == "main".to_string() {
+                let mainfunc = funcs.swap_remove(i);
+                break Some(mainfunc);
+            }
+            i += 1;
+        };
 
         println!("Assigning threads to functions");
-        for func in self.funcs.clone() {
+        for func in funcs {
             let consts = Arc::clone(&arc_consts);
             let pool = Arc::clone(&arc_pool);
             let ret_types = Arc::clone(&arc_ret);
@@ -482,6 +556,16 @@ impl CompilerComposer {
             let mut rec = rx.recv().unwrap();
             all_instructions.append(&mut rec);
         }
-        all_instructions
+        if let Some(main) = main_func {
+            let factory = FuncCompiler::new(arc_consts, arc_pool, arc_ret, main);
+            let mut inst_vec = factory.compile();
+            inst_vec.append(&mut all_instructions);
+            inst_vec
+        } else {
+            all_instructions
+        }
+    }
+    pub fn extract_pool_and_consts(self) -> (Vec<String>, Vec<u8>) {
+        (self.pool, self.consts)
     }
 }

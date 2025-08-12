@@ -17,6 +17,7 @@ pub enum ExprAST {
     Call(String, Vec<Expression>),
     Casted(Type, Box<ExprAST>),
     DotOp(DotOp, Box<ExprAST>),
+    Indexed(Box<ExprAST>, Box<ExprAST>),
 }
 
 #[derive(Clone, Debug)]

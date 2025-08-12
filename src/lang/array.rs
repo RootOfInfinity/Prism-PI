@@ -1,6 +1,6 @@
 use super::{tokens::Type, wrapped_val::WrappedVal};
 
-struct Array {
+pub struct Array {
     data_type: Type,
     data: Vec<u8>,
 }
@@ -60,5 +60,10 @@ impl Array {
         for _ in 0..size {
             self.data.pop();
         }
+    }
+    pub fn length(&self) -> i32 {
+        let size = self.data_type.size() - 1;
+        let length = self.data.len() / size;
+        length as i32
     }
 }
