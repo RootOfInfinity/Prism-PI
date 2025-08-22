@@ -1,9 +1,9 @@
-use std::{collections::HashMap, fmt::Error, mem::discriminant};
+use std::{collections::HashMap, mem::discriminant};
 
-use crate::lang::{ast::Assignment, tokens::Operator};
+use crate::lang::tokens::Operator;
 
 use super::{
-    ast::{ExprAST, Expression, FunctionAst, IfBlock, Loc, Statement},
+    ast::{ExprAST, FunctionAst, Loc, Statement},
     errors::{CompileError, ErrorType},
     tokens::{Literal, Type},
 };
@@ -251,8 +251,21 @@ impl TypeChecker {
                 blockcheck
             }
             Statement::Return(returnblock) => {
-                self.check_expr(returnblock.expr.expr, returnblock.expr.loc, &varmap)?;
-                Ok(())
+                let return_type =
+                    self.check_expr(returnblock.expr.expr, returnblock.expr.loc, &varmap)?;
+                if &return_type == ret_type {
+                    Ok(())
+                } else {
+                    let err = self.err(
+                        &returnblock.loc,
+                        &format!(
+                            "Return statement is of type `{:#?}`, expected type `{:#?}`",
+                            return_type, ret_type
+                        ),
+                    );
+                    self.errors.push(err.to_owned());
+                    return Err(err);
+                }
             }
         }
     }

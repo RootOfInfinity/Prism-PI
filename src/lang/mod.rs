@@ -75,10 +75,10 @@ pub fn run_lang_test(args: Vec<String>) {
     // println!("RAW CODE:\n{}", raw);
     let lex = LexEngine::new(raw);
     let toks = lex.lex_all().unwrap();
-    // println!("TOKENS:\n{:#?}", toks);
+    println!("TOKENS:\n{:#?}", toks);
     let parser = ParsingMachine::new(toks);
     let ast = parser.parse_all().unwrap();
-    // println!("AST:\n{:#?}", ast);
+    println!("AST:\n{:#?}", ast);
     match check_for_returns(ast.to_owned()) {
         Ok(()) => println!("Control Flow diagram reports NO ERRORS!"),
         Err(errvec) => {

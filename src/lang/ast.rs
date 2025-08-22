@@ -81,7 +81,7 @@ pub struct Return {
     pub loc: Loc,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Loc {
     pub line: u32,
     pub col: u32,
