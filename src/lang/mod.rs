@@ -4,6 +4,7 @@ use asm::{Assembler, print_instructions};
 use ast::{ExprAST, Expression, FunctionAst, IfBlock, Loc, Statement};
 use codegen::{CompilerComposer, FuncCompiler};
 use ctrlflow::check_for_returns;
+use errors::CompileError;
 use lexer::LexEngine;
 use parser::ParsingMachine;
 use tokens::{Literal, Type};
@@ -103,4 +104,60 @@ pub fn run_lang_test(args: Vec<String>) {
     let mut virtual_machine = VM::new(pool, consts, bytecode);
     let end_val = virtual_machine.execute_order_66();
     println!("The end value was {}", end_val);
+}
+
+pub fn run_code(code: String) -> Result<i32, Vec<CompileError>> {
+    let mut errvec: Vec<CompileError> = Vec::new();
+    let lexer = LexEngine::new(code);
+    let toks = match lexer.lex_all() {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            errvec.push(e);
+            return Err(errvec);
+        }
+    };
+    let parser = ParsingMachine::new(toks);
+    let ast = match parser.parse_all() {
+        Ok(a) => a,
+        Err(e) => {
+            errvec.push(e);
+            return Err(errvec);
+        }
+    };
+    match check_for_returns(ast.to_owned()) {
+        Ok(()) => (),
+        Err(mut e) => {
+            errvec.append(&mut e);
+        }
+    }
+    if errvec.len() > 0 {
+        return Err(errvec);
+    }
+    match TypeChecker::new(ast.to_owned()).check_all() {
+        Ok(()) => (),
+        Err(mut e) => {
+            errvec.append(&mut e);
+        }
+    }
+    if !ast
+        .iter()
+        .map(|func| func.name.clone())
+        .collect::<Vec<String>>()
+        .contains(&"main".to_string())
+    {
+        errvec.push(CompileError {
+            e_type: errors::ErrorType::ParsingError("No main func bro".to_string()),
+            line: 0,
+            col: 0,
+        });
+    }
+    if errvec.len() > 0 {
+        return Err(errvec);
+    }
+
+    let compiler = CompilerComposer::new(ast);
+    let instructions = compiler.parallel_compile();
+    let bytecode = Assembler::new(instructions).assemble();
+    let (pool, consts) = compiler.extract_pool_and_consts();
+    Ok(VM::new(pool, consts, bytecode).execute_order_66())
 }

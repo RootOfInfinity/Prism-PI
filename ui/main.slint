@@ -1,0 +1,97 @@
+import { Button, ComboBox, TextEdit } from "std-widgets.slint"; 
+export enum SelectedWindow { select, freestyle, story, customlvl }
+
+export component SelectionScreen {
+    callback freestyleClick <=> fm.clicked;
+    callback storyClick <=> sm.clicked;
+    callback customClick <=> cl.clicked;
+    Rectangle {
+        VerticalLayout {
+            width: 90%;
+            height: 90%;
+            alignment: end;
+            Text {
+                text: "Welcome to Prism Private Intelligence!";
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "The Premier Learn-To-Code App utilizing Mediated Transfer!";
+                horizontal-alignment: center;
+                min-height: 50px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                padding-top: 50px;
+                height: 30%;
+                fm := Button {
+                    text: "Freestyle Mode";
+                }
+                sm := Button {
+                    text: "Story Mode";
+                }
+                cl := Button {
+                    text: "Custom Levels";
+                }
+            }
+        }
+    }
+}
+
+export component FreestyleScreen {
+    pure callback run_code(string) -> string;
+    Rectangle {
+        VerticalLayout {
+            width: 90%;
+            editor := TextEdit {
+                min-width: 300px;
+                min-height: 300px;
+                font-size: 14px;
+                has-focus: true;
+
+                text: "Write code here";
+            }
+            startbutton := Button {
+                text: "Start";
+                clicked => {
+                    result.text = run_code(editor.text);
+                }
+            }
+            result := Text {
+                text: "Nothing yet";
+            }
+        }
+
+    }
+}
+
+export component CustomLevelScreen {
+    Rectangle {
+        Text { text: "Pretty custom yo"; }
+    }
+}
+
+export component MainWindow inherits Window {
+    property <SelectedWindow> windowToSelect: SelectedWindow.select;
+    pure callback run_freestyle_code <=> fs.run_code;
+    ss := SelectionScreen {
+        visible: windowToSelect == SelectedWindow.select ? true : false;
+        freestyleClick => {
+            windowToSelect = SelectedWindow.freestyle;
+        }
+        storyClick => {
+            windowToSelect = SelectedWindow.story;
+        }
+        customClick => {
+            windowToSelect = SelectedWindow.customlvl;
+        }
+    }
+    fs := FreestyleScreen {
+        visible: windowToSelect == SelectedWindow.freestyle ? true : false;
+    }
+    cs := CustomLevelScreen {
+        visible: windowToSelect == SelectedWindow.customlvl ? true : false;
+    }
+
+
+}
+

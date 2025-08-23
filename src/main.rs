@@ -3,7 +3,7 @@ use std::env;
 mod gui;
 mod lang;
 
-fn main() {
+fn main() -> Result<(), slint::PlatformError> {
     // println!("Hello, world!");
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -13,8 +13,9 @@ fn main() {
     } else {
         match args[1].as_str() {
             "lang" => crate::lang::run_lang_test(args),
-            "gui" => crate::gui::run_gui_test(args),
+            "gui" => crate::gui::run_gui_test(args)?,
             x => println!("Invalid argument: {}", x),
         }
     }
+    Ok(())
 }
