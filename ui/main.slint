@@ -1,4 +1,4 @@
-import { Button, ComboBox, TextEdit } from "std-widgets.slint"; 
+import { Button, ComboBox, TextEdit, Spinner } from "std-widgets.slint"; 
 export enum SelectedWindow { select, freestyle, story, customlvl }
 
 export component SelectionScreen {
@@ -38,7 +38,21 @@ export component SelectionScreen {
 }
 
 export component FreestyleScreen {
-    pure callback run_code(string) -> string;
+    in property <string> result: "Nothing yet";
+    changed result => {
+        spin.progress = 0%;
+        spin.visible = false;
+        spintime.running = false;
+        result_text.text = result;
+    }
+    callback run_code(string);
+    spintime := Timer {
+        interval: 50ms;
+        running: false;
+        triggered => {
+            spin.progress += spin.progress >= 100% ? -100% : 2%;
+        }
+    }
     Rectangle {
         VerticalLayout {
             width: 90%;
@@ -53,11 +67,17 @@ export component FreestyleScreen {
             startbutton := Button {
                 text: "Start";
                 clicked => {
-                    result.text = run_code(editor.text);
+                    spintime.running = true;
+                    spin.visible = true;
+                    run_code(editor.text);
                 }
             }
-            result := Text {
+            result_text := Text {
                 text: "Nothing yet";
+            }
+            spin := Spinner {
+                visible: false;
+                progress: 0%;
             }
         }
 
@@ -72,7 +92,8 @@ export component CustomLevelScreen {
 
 export component MainWindow inherits Window {
     property <SelectedWindow> windowToSelect: SelectedWindow.select;
-    pure callback run_freestyle_code <=> fs.run_code;
+    in property <string> freestyle_string <=> fs.result;
+    callback run_freestyle_code <=> fs.run_code;
     ss := SelectionScreen {
         visible: windowToSelect == SelectedWindow.select ? true : false;
         freestyleClick => {

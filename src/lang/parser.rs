@@ -233,6 +233,7 @@ impl ParsingMachine {
         let Token::Semicolon = self.cur_tok.0 else {
             return Err(self.err("Expected a semicolon".to_string()));
         };
+        self.eat_tok();
         Ok(Statement::Assign(Assignment {
             ident: name,
             ident_loc: id_loc,
