@@ -551,6 +551,12 @@ fn get_inst_size(instruction_num: u8) -> usize {
         JNZ_NUM => 5,
         CALL_NUM => 5,
         FUN_NUM => 3,
+        CAST_NUM => 2,
+        ARRLEN_NUM => 1,
+        ARRPOP_NUM => 1,
+        ARRPUSH_NUM => 1,
+        FREEARR_NUM => 1,
+        ARRIND_NUM => 1,
         _ => unreachable!(),
     }
 }

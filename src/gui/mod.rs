@@ -1,6 +1,6 @@
 use std::thread;
 
-use slint::{SharedString, invoke_from_event_loop};
+use slint::invoke_from_event_loop;
 
 use super::lang::run_code;
 slint::include_modules!();

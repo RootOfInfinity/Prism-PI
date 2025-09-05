@@ -2,6 +2,7 @@ use std::env;
 
 mod gui;
 mod lang;
+mod tester;
 
 fn main() -> Result<(), slint::PlatformError> {
     // println!("Hello, world!");

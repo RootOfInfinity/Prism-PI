@@ -25,7 +25,7 @@ mod wrapped_val;
 // optimize
 // mod optimizing;
 // error handling
-mod errors;
+pub mod errors;
 // semantic analysis
 mod array;
 mod ctrlflow;
