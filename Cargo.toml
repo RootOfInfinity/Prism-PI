@@ -5,6 +5,7 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
+json = "0.12.4"
 slint = "1.12.1"
 
 
