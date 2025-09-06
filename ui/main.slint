@@ -69,7 +69,7 @@ component FreestyleScreen{
         y: 5px;
     }
 
-    minimizeBlocks:=Button {
+    minimizeBlocks := Button {
         y:5px + back.height +5px;
         x:5px;
         width: 50px;
@@ -146,6 +146,34 @@ component CustomLevelScreen {
         Text { text: "Pretty custom yo"; }
     }
 }
+
+component Block{
+    Rectangle {
+        width: 100px;
+        height: 30px;
+        border-radius: 5px;
+        background: orange;
+        Text {
+            text: "Test Block";
+            color: black;
+            font-family: "Comic Sans MS";
+            font-weight: 550;
+            font-size: 16px;
+        }
+        TouchArea {
+            moved => {
+                if (self.pressed){
+                    parent.x += self.mouse-x - self.width/2;
+                    parent.y += self.mouse-y - self.height/2;
+                    
+                }
+            }
+        }
+    }
+}
+
+
+
 
 export component MainWindow inherits Window {
     title: "Prism-P.I.";
