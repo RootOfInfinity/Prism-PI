@@ -11,7 +11,9 @@ export component Block inherits Rectangle{
     in property <length> block_width;
     in property <color> block_color;
     in property <string> block_name;
-    
+    property <length> x_displacement;
+    property <length> y_displacement;
+    clip: true;
     width: block_width;
     height: 30px;
     border-radius: 5px;
@@ -25,12 +27,19 @@ export component Block inherits Rectangle{
         font-weight: 550;
         font-size: 16px;
     }
+
     TouchArea {
+        pointer-event(event) => {
+            if(event.button==PointerEventButton.left){
+                x_displacement = self.mouse-x;
+                y_displacement = self.mouse-y;
+            
+            }
+        }
         moved => {
             if (self.pressed){
-                parent.x += self.mouse-x - self.width/2;
-                parent.y += self.mouse-y - self.height/2;
-                
+                parent.x += self.mouse-x - x_displacement;
+                parent.y += self.mouse-y - y_displacement;
             }
         }
     }
@@ -123,6 +132,8 @@ component FreestyleScreen{
         }
     }
 
+    in property <[BlockData]> blocks: [{block_width:100px, block_color:Colors.orange, block_name:"Test block"}];
+
     codeArea:= VerticalLayout {
         x: 5px + back.width + 5px;
         y: 5px;
@@ -154,11 +165,16 @@ component FreestyleScreen{
             visible: false;
             progress: 0%;
         }
+        for block[i] in blocks : Block{
+                block_width: block.block_width;
+                block_color: block.block_color;
+                block_name: block.block_name;
+            }
     }
 
 
     //block area
-    in property <[BlockData]> blocks: [{block_width:100px, block_color:Colors.orange, block_name:"Test block"}];
+    
     Rectangle {
         x: 5px + back.width + 5px + codeArea.width + 5px;
         y: 5px;
@@ -182,11 +198,7 @@ component FreestyleScreen{
             }
 
 
-            for block[i] in blocks : Block{
-                block_width: block.block_width;
-                block_color: block.block_color;
-                block_name: block.block_name;
-            }
+            
 
             // Block {
             //     block_width: 100px;
