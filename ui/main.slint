@@ -1,14 +1,15 @@
-import { Button, ComboBox, TextEdit, Spinner } from "std-widgets.slint"; 
+import { Button, ComboBox, TextEdit, Spinner, VerticalBox } from "std-widgets.slint"; 
 export enum SelectedWindow { select, freestyle, story, customlvl }
 
 component SelectionScreen {
     callback freestyleClick <=> fm.clicked;
     callback storyClick <=> sm.clicked;
     callback customClick <=> cl.clicked;
+    min-width: 350px;
     Rectangle {
         VerticalLayout {
-            width: 90%;
-            height: 90%;
+            width: 100%;
+            height: 100%;
             alignment: end;
             Text {
                 text: "Welcome to Prism Private Intelligence!";
@@ -22,7 +23,11 @@ component SelectionScreen {
             }
             HorizontalLayout {
                 padding-top: 50px;
+                padding-left: 10px;
+                padding-right: 10px;
                 height: 30%;
+                spacing: 5px;
+                
                 fm := Button {
                     text: "Freestyle Mode";
                 }
@@ -37,7 +42,7 @@ component SelectionScreen {
     }
 }
 
-component FreestyleScreen {
+component FreestyleScreen{
     in property <string> result: "Nothing yet";
     changed result => {
         spin.progress = 0%;
@@ -54,42 +59,86 @@ component FreestyleScreen {
             spin.progress += spin.progress >= 100% ? -100% : 2%;
         }
     }
+
     back := Button {
         width: 50px;
         height: 50px;
+        primary: false;
         text: "<-";
-        x: 10px;
-        y: 10px;
+        x: 5px;
+        y: 5px;
     }
-    Rectangle {
-        VerticalLayout {
-            width: 90%;
-            editor := TextEdit {
-                min-width: 300px;
-                min-height: 300px;
-                font-size: 14px;
-                has-focus: true;
 
-                text: "Write code here";
+    minimizeBlocks:=Button {
+        y:5px + back.height +5px;
+        x:5px;
+        width: 50px;
+        height: 50px;
+        text: "[=]";
+        clicked => {
+            if (blockArea.width == 150px){
+                blockArea.width = 0px;
             }
-            startbutton := Button {
-                text: "Start";
-                clicked => {
-                    spintime.running = true;
-                    spin.visible = true;
-                    run_code(editor.text);
-                }
-            }
-            result_text := Text {
-                text: "Nothing yet";
-            }
-            spin := Spinner {
-                visible: false;
-                progress: 0%;
+            else{
+                blockArea.width = 150px;
             }
         }
-
     }
+
+    codeArea:= VerticalLayout {
+        x: 5px + back.width + 5px;
+        y: 5px;
+        width: parent.width - self.x - 5px - blockArea.width - 5px;
+        height: parent.height - self.y - startbutton.height ;
+        spacing: 5px;
+
+        editor := TextEdit {
+            min-width: 300px;
+            min-height: 300px;
+            font-size: 14px;
+            has-focus: true;
+
+            text: "Write code here";
+        }
+        startbutton := Button {
+            height: 30px;
+            text: "Start";
+            clicked => {
+                spintime.running = true;
+                spin.visible = true;
+                run_code(editor.text);
+            }
+        }
+        result_text := Text {
+            text: "Nothing yet";
+        }
+        spin := Spinner {
+            visible: false;
+            progress: 0%;
+        }
+    }
+
+    Rectangle {
+        x: 5px + back.width + 5px + codeArea.width + 5px;
+        y: 5px;
+        width: 160px;
+
+        blockArea := Rectangle{
+            width: 150px;
+            y:0px;
+            x:0px;
+            height: editor.height;
+            background: gray;
+            border-width: 5px;
+            
+        }
+        Image {
+            y: blockArea.height+5px;
+            height: parent.height - blockArea.height - 5px;
+            source: @image-url("images/Prism-P.I._logo_temp.png");
+        }
+    }
+
 }
 
 component CustomLevelScreen {
@@ -99,6 +148,7 @@ component CustomLevelScreen {
 }
 
 export component MainWindow inherits Window {
+    title: "Prism-P.I.";
     property <SelectedWindow> windowToSelect: SelectedWindow.select;
     in property <string> freestyle_string <=> fs.result;
     callback run_freestyle_code <=> fs.run_code;
