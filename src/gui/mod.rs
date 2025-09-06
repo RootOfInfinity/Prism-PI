@@ -1,6 +1,6 @@
-use std::thread;
+use std::{str::FromStr, thread, vec};
 
-use slint::invoke_from_event_loop;
+use slint::{invoke_from_event_loop, Color, Model};
 
 use super::lang::run_code;
 slint::include_modules!();
@@ -24,6 +24,15 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
             })
         });
     });
+    println!("new block");
+    let mut blocks: Vec<BlockData> = main_window.get_blocks().iter().collect();
+    blocks.push(BlockData { block_color: Color::from_rgb_u8(255, 0, 0), block_name: String::from_str("Another Block").unwrap().into(), block_width: 130.0 });
+    let out_blocks = std::rc::Rc::new(slint::VecModel::from(blocks));
+    main_window.set_blocks(out_blocks.into());
+    main_window.on_summon_block( || {
+        println!("new block");
+        //figure out how to add blocks
+        });
 
     main_window.run()
 }

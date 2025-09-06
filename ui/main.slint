@@ -1,6 +1,12 @@
 import { Button, ComboBox, TextEdit, Spinner, VerticalBox } from "std-widgets.slint"; 
 export enum SelectedWindow { select, freestyle, story, customlvl }
 
+struct BlockData {
+    block_width:length,
+    block_color: color,
+    block_name: string,
+}
+
 export component Block inherits Rectangle{
     in property <length> block_width;
     in property <color> block_color;
@@ -83,6 +89,7 @@ component FreestyleScreen{
     }
     callback run_code(string);
     callback back_button <=> back.clicked;
+    callback create_block();
     spintime := Timer {
         interval: 50ms;
         running: false;
@@ -149,6 +156,9 @@ component FreestyleScreen{
         }
     }
 
+
+    //block area
+    in property <[BlockData]> blocks: [{block_width:100px, block_color:Colors.orange, block_name:"Test block"}];
     Rectangle {
         x: 5px + back.width + 5px + codeArea.width + 5px;
         y: 5px;
@@ -162,12 +172,27 @@ component FreestyleScreen{
             background: gray;
             border-width: 5px;
             
-            
-            Block {
-                block_width: 100px;
-                block_color: orange;
-                block_name: "Test block";
+            Button {
+                text: "spawn block";
+                y:5px;
+                x:5px;
+                clicked => {
+                    create_block();
+                }
             }
+
+
+            for block[i] in blocks : Block{
+                block_width: block.block_width;
+                block_color: block.block_color;
+                block_name: block.block_name;
+            }
+
+            // Block {
+            //     block_width: 100px;
+            //     block_color: orange;
+            //     block_name: "Test block";
+            // }
                 
 
         }
@@ -194,7 +219,7 @@ component Component {
     Rectangle {
         Block {
             block_width: 100px;
-            block_color: orange;
+            block_color: rgb(255,0,0);
             block_name: "Test block";
         }
     }
@@ -208,6 +233,9 @@ export component MainWindow inherits Window {
     property <SelectedWindow> windowToSelect: SelectedWindow.freestyle;
     in property <string> freestyle_string <=> fs.result;
     callback run_freestyle_code <=> fs.run_code;
+
+    in property <[BlockData]> blocks <=> fs.blocks;
+    callback summon_block <=> fs.create_block;
     ss := SelectionScreen {
         visible: windowToSelect == SelectedWindow.select ? true : false;
         freestyleClick => {
