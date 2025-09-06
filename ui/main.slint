@@ -1,6 +1,37 @@
 import { Button, ComboBox, TextEdit, Spinner, VerticalBox } from "std-widgets.slint"; 
 export enum SelectedWindow { select, freestyle, story, customlvl }
 
+export component Block inherits Rectangle{
+    in property <length> block_width;
+    in property <color> block_color;
+    in property <string> block_name;
+    
+    width: block_width;
+    height: 30px;
+    border-radius: 5px;
+    background: block_color;
+    
+    Text {
+        x:5px;
+        text: block_name;
+        color: black;
+        font-family: "Comic Sans MS";
+        font-weight: 550;
+        font-size: 16px;
+    }
+    TouchArea {
+        moved => {
+            if (self.pressed){
+                parent.x += self.mouse-x - self.width/2;
+                parent.y += self.mouse-y - self.height/2;
+                
+            }
+        }
+    }
+}
+
+
+
 component SelectionScreen {
     callback freestyleClick <=> fm.clicked;
     callback storyClick <=> sm.clicked;
@@ -131,6 +162,14 @@ component FreestyleScreen{
             background: gray;
             border-width: 5px;
             
+            
+            Block {
+                block_width: 100px;
+                block_color: orange;
+                block_name: "Test block";
+            }
+                
+
         }
         Image {
             y: blockArea.height+5px;
@@ -147,37 +186,26 @@ component CustomLevelScreen {
     }
 }
 
-component Block{
+
+
+
+
+component Component {
     Rectangle {
-        width: 100px;
-        height: 30px;
-        border-radius: 5px;
-        background: orange;
-        Text {
-            text: "Test Block";
-            color: black;
-            font-family: "Comic Sans MS";
-            font-weight: 550;
-            font-size: 16px;
-        }
-        TouchArea {
-            moved => {
-                if (self.pressed){
-                    parent.x += self.mouse-x - self.width/2;
-                    parent.y += self.mouse-y - self.height/2;
-                    
-                }
-            }
+        Block {
+            block_width: 100px;
+            block_color: orange;
+            block_name: "Test block";
         }
     }
 }
 
 
-
-
 export component MainWindow inherits Window {
     title: "Prism-P.I.";
-    property <SelectedWindow> windowToSelect: SelectedWindow.select;
+    min-height: 300px;
+    min-width: 300px;
+    property <SelectedWindow> windowToSelect: SelectedWindow.freestyle;
     in property <string> freestyle_string <=> fs.result;
     callback run_freestyle_code <=> fs.run_code;
     ss := SelectionScreen {
