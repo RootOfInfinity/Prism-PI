@@ -5,18 +5,20 @@ struct BlockData {
     block_width: int,
     block_color: color,
     block_name: string,
+    code: string,
 }
 
 export component Block inherits Rectangle{
     in property <int> block_width;
     in property <color> block_color;
     in property <string> block_name;
+    in property <string> code;
     property <length> x_displacement;
     property <length> y_displacement;
     clip: true;
     width: block_width * 1px + 106px;
     height: (126px)/2;
-    
+    z:500.0;
     
     Path {
         x:0;
@@ -24,27 +26,27 @@ export component Block inherits Rectangle{
         stroke: black;
         stroke-width: 3px;
         fill: block_color;
-        MoveTo {x:5;y:(0)/2;}
+        MoveTo {x:5;y:(0)/3;}
 
-        LineTo {x:15;y:(0)/2;}//indent
-        LineTo {x:25;y:(20)/2;} 
-        LineTo {x:45;y:(20)/2;}
-        LineTo {x:55;y:(0)/2;}
+        LineTo {x:15;y:(0)/3;}//indent
+        LineTo {x:25;y:(20)/3;} 
+        LineTo {x:45;y:(20)/3;}
+        LineTo {x:55;y:(0)/3;}
         
-        LineTo {x:95+block_width;y:(0)/2;}
-        ArcTo {x:100+block_width;y:(5)/2; radius-x: 5; radius-y: 5; sweep: true;}
-        LineTo {x:100+block_width;y:(95)/2;}
-        ArcTo {x:95+block_width;y:(100)/2; radius-x: 5; radius-y: 5; sweep: true;}
+        LineTo {x:95+block_width;y:(0)/3;}
+        ArcTo {x:100+block_width;y:(5)/3; radius-x: 5; radius-y: 5; sweep: true;}
+        LineTo {x:100+block_width;y:(95)/3;}
+        ArcTo {x:95+block_width;y:(100)/3; radius-x: 5; radius-y: 5; sweep: true;}
         
         
-        LineTo {x:55;y:(100)/2;}//outdent
-        LineTo {x:45;y:(120)/2;}
-        LineTo {x:25;y:(120)/2;}
-        LineTo {x:15;y:(100)/2;}
-        LineTo {x:5;y:(100)/2;}
+        LineTo {x:55;y:(100)/3;}//outdent
+        LineTo {x:45;y:(120)/3;}
+        LineTo {x:25;y:(120)/3;}
+        LineTo {x:15;y:(100)/3;}
+        LineTo {x:5;y:(100)/3;}
 
-        ArcTo {x:0;y:(95)/2; radius-x: 5; radius-y: 5; sweep: true;}
-        LineTo {x:0;y:(5)/2;}
+        ArcTo {x:0;y:(95)/3; radius-x: 5; radius-y: 5; sweep: true;}
+        LineTo {x:0;y:(5)/3;}
         ArcTo {x:5;y:(0)/2; radius-x: 5; radius-y: 5; sweep: true;}
         
     }
@@ -65,8 +67,11 @@ export component Block inherits Rectangle{
             if(event.button==PointerEventButton.left){
                 x_displacement = self.mouse-x;
                 y_displacement = self.mouse-y;
-            
             }
+            
+        }
+        clicked => {
+            debug("released")
         }
         moved => {
             if (self.pressed){
@@ -75,6 +80,57 @@ export component Block inherits Rectangle{
             }
         }
     }
+}
+
+export component CodeArea inherits VerticalLayout{
+    
+    in property <string> result: "Nothing yet";
+    callback run_code(string);
+    
+
+    changed result => {
+        spin.progress = 0%;
+        spin.visible = false;
+        spintime.running = false;
+        result_text.text = result;
+    }
+    in property <length> parent_height;
+    height: parent_height - self.y - startbutton.height ;
+    spacing: 5px;
+
+    spintime := Timer {
+        interval: 50ms;
+        running: false;
+        triggered => {
+            spin.progress += spin.progress >= 100% ? -100% : 2%;
+        }
+    }
+
+    editor := TextEdit {
+        min-width: 300px;
+        min-height: 300px;
+        font-size: 14px;
+        has-focus: true;
+
+        text: "Write code here";
+    }
+    startbutton := Button {
+        height: 30px;
+        text: "Start";
+        clicked => {
+            spintime.running = true;
+            spin.visible = true;
+            run_code(editor.text);
+        }
+    }
+    result_text := Text {
+        text: "Nothing yet";
+    }
+    spin := Spinner {
+        visible: false;
+        progress: 0%;
+    }
+
 }
 
 component test {
@@ -157,22 +213,11 @@ component SelectionScreen {
 
 component FreestyleScreen{
     in property <string> result: "Nothing yet";
-    changed result => {
-        spin.progress = 0%;
-        spin.visible = false;
-        spintime.running = false;
-        result_text.text = result;
-    }
     callback run_code(string);
-    callback back_button <=> back.clicked;
     callback create_block();
-    spintime := Timer {
-        interval: 50ms;
-        running: false;
-        triggered => {
-            spin.progress += spin.progress >= 100% ? -100% : 2%;
-        }
-    }
+    callback back_button <=> back.clicked;
+    
+    
 
     back := Button {
         width: 50px;
@@ -199,43 +244,18 @@ component FreestyleScreen{
         }
     }
 
-    in property <[BlockData]> blocks: [{block_width:10, block_color:Colors.orange, block_name:"Test block"},{block_width:100, block_color:Colors.orange, block_name:"Test block 2"}];
+    in property <[BlockData]> blocks: [{block_width:10, block_color:Colors.orange, block_name:"Test block",code:"example 1"},
+                                        {block_width:100, block_color:Colors.orange, block_name:"Test block 2",code:"example 2"}];
 
-    codeArea:= VerticalLayout {
+    codeArea := CodeArea {
         x: 5px + back.width + 5px;
         y: 5px;
         width: parent.width - self.x - 5px - blockArea.width - 5px;
-        height: parent.height - self.y - startbutton.height ;
-        spacing: 5px;
-
-        editor := TextEdit {
-            min-width: 300px;
-            min-height: 300px;
-            font-size: 14px;
-            has-focus: true;
-
-            text: "Write code here";
-        }
-        startbutton := Button {
-            height: 30px;
-            text: "Start";
-            clicked => {
-                spintime.running = true;
-                spin.visible = true;
-                run_code(editor.text);
-            }
-        }
-        result_text := Text {
-            text: "Nothing yet";
-        }
-        spin := Spinner {
-            visible: false;
-            progress: 0%;
-        }
+        parent_height: parent.height;
         
     }
 
-
+    
     //block area
     
     Rectangle {
@@ -245,9 +265,9 @@ component FreestyleScreen{
 
         blockArea := Rectangle{
             width: 150px;
+            height: parent.height - 130px;
             y:0px;
             x:0px;
-            height: editor.height;
             background: gray;
             border-width: 5px;
             
@@ -258,31 +278,21 @@ component FreestyleScreen{
                 clicked => {
                     create_block();
                 }
-            }
-
-
-            
-
-            // Block {
-            //     block_width: 100px;
-            //     block_color: orange;
-            //     block_name: "Test block";
-            // }
-                
+            }   
 
         }
-        Image {
-            y: blockArea.height+5px;
-            height: parent.height - blockArea.height - 5px;
+        logo:=Image {
+            y: parent.height - blockArea.width + 35px - 5px;
+            width: blockArea.width - 40px;
+            height: blockArea.width - 40px;
             source: @image-url("images/Prism-P.I._logo_temp.png");
         }
-
-        for block[i] in blocks : Block{
-                block_width: block.block_width;
-                block_color: block.block_color;
-                block_name: block.block_name;
-                
-            }
+    }
+    
+    for block[i] in blocks : Block{
+        block_width: block.block_width;
+        block_color: block.block_color;
+        block_name: block.block_name;
     }
 
 }
