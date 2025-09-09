@@ -1,24 +1,56 @@
-import { Button, ComboBox, TextEdit, Spinner, VerticalBox } from "std-widgets.slint"; 
+import { Button, ComboBox, TextEdit, Spinner, VerticalBox, LineEdit } from "std-widgets.slint"; 
 export enum SelectedWindow { select, freestyle, story, customlvl }
 
 struct BlockData {
-    block_width:length,
+    block_width: int,
     block_color: color,
     block_name: string,
 }
 
 export component Block inherits Rectangle{
-    in property <length> block_width;
+    in property <int> block_width;
     in property <color> block_color;
     in property <string> block_name;
     property <length> x_displacement;
     property <length> y_displacement;
     clip: true;
-    width: block_width;
-    height: 30px;
-    border-radius: 5px;
-    background: block_color;
+    width: block_width * 1px + 106px;
+    height: (126px)/2;
     
+    
+    Path {
+        x:0;
+        y:0;
+        stroke: black;
+        stroke-width: 3px;
+        fill: block_color;
+        MoveTo {x:5;y:(0)/2;}
+
+        LineTo {x:15;y:(0)/2;}//indent
+        LineTo {x:25;y:(20)/2;} 
+        LineTo {x:45;y:(20)/2;}
+        LineTo {x:55;y:(0)/2;}
+        
+        LineTo {x:95+block_width;y:(0)/2;}
+        ArcTo {x:100+block_width;y:(5)/2; radius-x: 5; radius-y: 5; sweep: true;}
+        LineTo {x:100+block_width;y:(95)/2;}
+        ArcTo {x:95+block_width;y:(100)/2; radius-x: 5; radius-y: 5; sweep: true;}
+        
+        
+        LineTo {x:55;y:(100)/2;}//outdent
+        LineTo {x:45;y:(120)/2;}
+        LineTo {x:25;y:(120)/2;}
+        LineTo {x:15;y:(100)/2;}
+        LineTo {x:5;y:(100)/2;}
+
+        ArcTo {x:0;y:(95)/2; radius-x: 5; radius-y: 5; sweep: true;}
+        LineTo {x:0;y:(5)/2;}
+        ArcTo {x:5;y:(0)/2; radius-x: 5; radius-y: 5; sweep: true;}
+        
+    }
+    
+
+
     Text {
         x:5px;
         text: block_name;
@@ -45,6 +77,41 @@ export component Block inherits Rectangle{
     }
 }
 
+component test {
+    Rectangle {
+        property <int> widthy;
+        widthy: 200;
+        width: 200px;
+        height: 200px;
+        Path {
+            stroke: black;
+            stroke-width: 3px;
+            fill: darkorange;
+            MoveTo {x:5;y:0;}
+
+            LineTo {x:30;y:0;}//indent
+            LineTo {x:40;y:20;} 
+            LineTo {x:90;y:20;}
+            LineTo {x:100;y:0;}
+            
+            LineTo {x:95+widthy;y:0;}
+            ArcTo {x:100+widthy;y:5; radius-x: 5; radius-y: 5; sweep: true;}
+            LineTo {x:100+widthy;y:95;}
+            ArcTo {x:95+widthy;y:100; radius-x: 5; radius-y: 5; sweep: true;}
+           
+           
+            LineTo {x:100;y:100;}//outdent
+            LineTo {x:90;y:120;}
+            LineTo {x:40;y:120;}
+            LineTo {x:30;y:100;}
+            LineTo {x:5;y:100;}
+            ArcTo {x:0;y:95; radius-x: 5; radius-y: 5; sweep: true;}
+            LineTo {x:0;y:5;}
+            ArcTo {x:5;y:0; radius-x: 5; radius-y: 5; sweep: true;}
+            
+        }
+    }
+}
 
 
 component SelectionScreen {
@@ -132,7 +199,7 @@ component FreestyleScreen{
         }
     }
 
-    in property <[BlockData]> blocks: [{block_width:100px, block_color:Colors.orange, block_name:"Test block"}];
+    in property <[BlockData]> blocks: [{block_width:10, block_color:Colors.orange, block_name:"Test block"},{block_width:100, block_color:Colors.orange, block_name:"Test block 2"}];
 
     codeArea:= VerticalLayout {
         x: 5px + back.width + 5px;
@@ -165,11 +232,7 @@ component FreestyleScreen{
             visible: false;
             progress: 0%;
         }
-        for block[i] in blocks : Block{
-                block_width: block.block_width;
-                block_color: block.block_color;
-                block_name: block.block_name;
-            }
+        
     }
 
 
@@ -213,6 +276,13 @@ component FreestyleScreen{
             height: parent.height - blockArea.height - 5px;
             source: @image-url("images/Prism-P.I._logo_temp.png");
         }
+
+        for block[i] in blocks : Block{
+                block_width: block.block_width;
+                block_color: block.block_color;
+                block_name: block.block_name;
+                
+            }
     }
 
 }
@@ -225,17 +295,6 @@ component CustomLevelScreen {
 
 
 
-
-
-component Component {
-    Rectangle {
-        Block {
-            block_width: 100px;
-            block_color: rgb(255,0,0);
-            block_name: "Test block";
-        }
-    }
-}
 
 
 export component MainWindow inherits Window {
