@@ -212,8 +212,8 @@ component SelectionScreen {
 }
 
 component FreestyleScreen{
-    in property <string> result: "Nothing yet";
-    callback run_code(string);
+    in property <string> result <=> codeArea.result;
+    callback run_code <=> codeArea.run_code;
     callback create_block();
     callback back_button <=> back.clicked;
     
