@@ -375,25 +375,24 @@ impl VM {
         }
         match var_type {
             INT_NUM => {
-                let new_slice = &self.stack[new_ptr - 1 - size_of::<i32>()..new_ptr - 1];
+                // let new_slice = &self.stack[new_ptr - 1 - size_of::<i32>()..new_ptr - 1];
                 for i in 0..size_of::<i32>() {
-                    self.stack[var_ptr - 1 - size_of::<i32>() + i] =
-                        self.stack[new_ptr - 1 - size_of::<i32>() + i];
+                    self.stack[var_ptr - size_of::<i32>() + i] =
+                        self.stack[new_ptr - size_of::<i32>() + i];
                 }
             }
             DCML_NUM => {
-                let new_slice = &self.stack[new_ptr - 1 - size_of::<f64>()..new_ptr - 1];
+                // let new_slice = &self.stack[new_ptr - 1 - size_of::<f64>()..new_ptr - 1];
                 for i in 0..size_of::<f64>() {
-                    self.stack[var_ptr - 1 - size_of::<f64>() + i] =
-                        self.stack[new_ptr - 1 - size_of::<f64>() + i];
+                    self.stack[var_ptr - size_of::<f64>() + i] =
+                        self.stack[new_ptr - size_of::<f64>() + i];
                 }
             }
             BOOL_NUM => {
-                let val = self.stack[new_ptr - 2];
-                self.stack[var_ptr - 2] = val;
+                self.stack[var_ptr - 1] = self.stack[new_ptr - 1];
             }
             STRING_NUM => {
-                let new_slice = &self.stack[new_ptr - 1 - size_of::<u16>()..new_ptr - 1];
+                // let new_slice = &self.stack[new_ptr - 1 - size_of::<u16>()..new_ptr - 1];
                 for i in 0..size_of::<u16>() {
                     self.stack[var_ptr - 1 - size_of::<u16>() + i] =
                         self.stack[new_ptr - 1 - size_of::<u16>() + i];
@@ -530,10 +529,9 @@ impl VM {
         vals
     }
 
-    fn get_all_consts(&self) -> Vec<(u32, WrappedVal)> {
+    fn get_all_consts(&self) -> Vec<(usize, WrappedVal)> {
         let mut byte_index = 0;
-        let mut vals = Vec::<(u32, WrappedVal)>::new();
-        let mut current_number = 0;
+        let mut vals = Vec::<(usize, WrappedVal)>::new();
         loop {
             if byte_index >= self.consts.len() {
                 break;
@@ -579,8 +577,7 @@ impl VM {
                 }
                 _ => unreachable!(),
             };
-            vals.push((current_number, wrapval));
-            current_number += 1;
+            vals.push((byte_index, wrapval));
             byte_index += typesize;
         }
         return vals;

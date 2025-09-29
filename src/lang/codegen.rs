@@ -176,7 +176,10 @@ impl FuncCompiler {
     // gets the offset from the top of the var ident passed in
     fn get_var(&self, id: &String) -> (u16, Type) {
         let (varindex, vartype) = self.var_tracker.get(id).unwrap();
-        (self.amount_in_stack as u16 - varindex, vartype.to_owned())
+        (
+            self.amount_in_stack as u16 - varindex - 1,
+            vartype.to_owned(),
+        )
     }
     // recursively compiles the ExprAST and pushes it to self.code
     fn compile_expr(&mut self, expr: ExprAST) -> Type {
@@ -345,12 +348,11 @@ impl FuncCompiler {
                     "{}-while_{}",
                     self.func.name, start_ip
                 )));
-                self.compile_expr(x.cond.expr);
+                self.amount_in_stack -= self.compile_expr(x.cond.expr).size() as u16;
                 self.code.push(Instruction::Jnz(format!(
                     "{}-while_{}_end",
                     self.func.name, start_ip
                 )));
-                // self.code.push(Instruction::Pop);
 
                 self.scoped_vars.push((0, 0, 0));
                 for st in x.code {
