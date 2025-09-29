@@ -123,7 +123,7 @@ impl VM {
                                 .try_into()
                                 .unwrap(),
                         );
-                        let wrapped_val = self.wrap_stack_val(offset);
+                        let wrapped_val = self.wrap_stack_val(offset); // failing here
                         self.push_wrapped(wrapped_val);
                     }
                     PUSH_FROM_CONSTS => {
