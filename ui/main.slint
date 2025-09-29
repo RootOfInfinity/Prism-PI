@@ -244,8 +244,10 @@ component FreestyleScreen{
         }
     }
 
-    in property <[BlockData]> blocks: [{block_width:10, block_color:Colors.orange, block_name:"Test block",code:"example 1"},
-                                        {block_width:100, block_color:Colors.orange, block_name:"Test block 2",code:"example 2"}];
+    in property <[BlockData]> blocks: [
+        {block_width:10, block_color:Colors.orange, block_name:"Test block",code:"example 1"},
+        {block_width:100, block_color:Colors.orange, block_name:"Test block 2",code:"example 2"}
+    ];
 
     codeArea := CodeArea {
         x: 5px + back.width + 5px;
