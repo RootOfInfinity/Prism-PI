@@ -36,8 +36,23 @@ mod repl;
 pub fn run_lang_test(args: Vec<String>) {
     // run tests for lang
     println!("lang stuff");
+    let debug_or_eval = args[2].clone();
+    let debug_mode: bool;
+    if debug_or_eval == String::from("eval") {
+        debug_mode = false;
+    } else if debug_or_eval == String::from("debug") {
+        debug_mode = true;
+    } else {
+        println!("The second argument must either be 'debug' or 'eval'");
+        println!(
+            "Debug gives information about the stack and ip, which is slow, and has lots of terminal output"
+        );
+        println!("Eval just runs the code and gives the result at the end");
+        println!("You put this: '{}'", debug_or_eval);
+        return;
+    }
     println!("Getting path");
-    let path = args[2].clone();
+    let path = args[3].clone();
     println!("Got path: {}", path);
     let raw = fs::read_to_string(path).expect("File not found");
     // println!("RAW CODE:\n{}", raw);
@@ -69,7 +84,12 @@ pub fn run_lang_test(args: Vec<String>) {
     println!("Time to RUN!");
     println!("EXECUTE ORDER 66!");
     let mut virtual_machine = VM::new(pool, consts, bytecode);
-    let end_val = virtual_machine.execute_order_66();
+    let end_val;
+    if debug_mode {
+        end_val = virtual_machine.debug_eval();
+    } else {
+        end_val = virtual_machine.execute_order_66();
+    }
     println!("The end value was {}", end_val);
 }
 

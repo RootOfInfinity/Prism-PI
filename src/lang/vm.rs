@@ -72,6 +72,16 @@ impl VM {
             // println!("New IP: {}", self.ip);
         }
     }
+    pub fn debug_eval(&mut self) -> i32 {
+        println!("All Consts: {:#?}", self.get_all_consts());
+        loop {
+            if let ProgState::Halt(x) = self.eval_inst() {
+                break x;
+            }
+            println!("Whole Stack: {:#?}", self.get_entire_stack_wrapped());
+            println!("New IP: {}", self.ip);
+        }
+    }
     fn eval_inst(&mut self) -> ProgState {
         let ip = self.ip;
         let len = get_inst_size(self.inst[ip]);
@@ -502,7 +512,7 @@ impl VM {
         }
     }
     // costly
-    fn get_entire_stack_wrapped(&mut self) -> Vec<WrappedVal> {
+    fn get_entire_stack_wrapped(&self) -> Vec<WrappedVal> {
         let mut byte_off = 0;
         let mut vals = Vec::new();
         let len = self.stack.len();
@@ -518,6 +528,62 @@ impl VM {
         }
         vals.reverse();
         vals
+    }
+
+    fn get_all_consts(&self) -> Vec<(u32, WrappedVal)> {
+        let mut byte_index = 0;
+        let mut vals = Vec::<(u32, WrappedVal)>::new();
+        let mut current_number = 0;
+        loop {
+            if byte_index >= self.consts.len() {
+                break;
+            }
+            let datatype = self.consts[byte_index];
+            let typesize = get_type_size(datatype);
+            let wrapval = match datatype {
+                INT_NUM => {
+                    let num = i32::from_le_bytes(
+                        self.consts[byte_index + 1..byte_index + 1 + size_of::<i32>()]
+                            .try_into()
+                            .unwrap(),
+                    );
+                    WrappedVal::Int(num)
+                }
+                DCML_NUM => {
+                    let float = f64::from_le_bytes(
+                        self.consts[byte_index + 1..byte_index + 1 + size_of::<f64>()]
+                            .try_into()
+                            .unwrap(),
+                    );
+                    WrappedVal::Dcml(float)
+                }
+                BOOL_NUM => {
+                    let boolean = self.consts[byte_index + 1] != 0;
+                    WrappedVal::Bool(boolean)
+                }
+                STRING_NUM => {
+                    let string_ind = u16::from_le_bytes(
+                        self.consts[byte_index + 1..byte_index + 1 + size_of::<u16>()]
+                            .try_into()
+                            .unwrap(),
+                    );
+                    WrappedVal::String(string_ind)
+                }
+                CALLSTACK_NUM => {
+                    println!("Callstack in consts?! At '{byte_index}' byte index");
+                    panic!("Callstack in const error");
+                }
+                ARRAY_NUM => {
+                    // arrays aren't implemented yet
+                    todo!()
+                }
+                _ => unreachable!(),
+            };
+            vals.push((current_number, wrapval));
+            current_number += 1;
+            byte_index += typesize;
+        }
+        return vals;
     }
 }
 
