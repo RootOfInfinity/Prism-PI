@@ -20,22 +20,22 @@
 
 There needs to be distinct blocks that can be used and manipulated.
 Declaration:
-<type> *name* <- **expression**
+`<type> *name* <- **expression**`
 Assignment:    
-<var> <- **expression**    
+`<var> <- **expression**`    
 Expression (Mostly for void function calls)
 Although, we might not need void function calls:
-**expression**
+`**expression**`
 If Statement:
-If **expression**    
+`If **expression**    
     )    
 Else    
     )    
-)    
+)`    
 While Statement:
-While **expression**
+`While **expression**
     )
-)
+)`
 You get the gist of it all. its complex.
 But there also has to be tinier blocks for expressions.
 Like adding, subtracting, comparing, etc.
