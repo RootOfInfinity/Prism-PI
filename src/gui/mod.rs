@@ -2,6 +2,8 @@ use std::{rc::Rc, str::FromStr, thread, vec};
 
 use slint::{Color, ComponentHandle, Model, invoke_from_event_loop};
 
+mod blockdata;
+
 use super::lang::run_code;
 slint::include_modules!();
 pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
