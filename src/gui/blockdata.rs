@@ -12,6 +12,8 @@ pub struct Block {
     btype: BlockType,
     id: BlockID,
     next: BlockID,
+    loc: (u64, u64),
+    is_root: bool,
 }
 pub enum BlockType {
     FuncStart(Func),
@@ -110,7 +112,7 @@ pub enum BinOp {
 // Point is, we can make the backend of the blocks seperate from the UI of the blocks.
 // Just like with the text language.
 
-type World = (HashMap<BlockID, Block>, HashMap<ExprID, VisualExpr>);
+pub type World = (HashMap<BlockID, Block>, HashMap<ExprID, VisualExpr>);
 
 pub trait WorldManipulation {
     // new Blocks

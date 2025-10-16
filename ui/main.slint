@@ -2,10 +2,15 @@ import { Button, ComboBox, TextEdit, Spinner, VerticalBox, LineEdit } from "std-
 export enum SelectedWindow { select, freestyle, story, customlvl }
 
 struct BlockData {
+    block_id: int,
     block_width: int,
     block_color: color,
     block_name: string,
     code: string,
+    x: length,
+    y: length,
+    x_disp: length,
+    y_disp: length,
 }
 
 export component Block inherits Rectangle{
@@ -13,8 +18,13 @@ export component Block inherits Rectangle{
     in property <color> block_color;
     in property <string> block_name;
     in property <string> code;
-    property <length> x_displacement;
-    property <length> y_displacement;
+    in property <int> block_id;
+    in-out property <length> x_displacement;
+    in-out property <length> y_displacement;
+
+    // BlockID, x, y
+    callback move(length, length);
+    
     clip: true;
     width: block_width * 1px + 106px;
     height: (126px)/2;
@@ -71,7 +81,14 @@ export component Block inherits Rectangle{
             
         }
         clicked => {
-            debug("released")
+            debug("released");
+            debug("X and Y before move");
+            debug(root.x, root.y);
+            move(root.x, root.y);
+            debug("X and Y after move");
+            debug(root.x, root.y);
+
+
         }
         moved => {
             if (self.pressed){
@@ -234,11 +251,25 @@ component SelectionScreen {
     }
 }
 
+enum SlintBlockType {
+    function,
+    declaration,
+    assignment,
+    expression,
+    return,
+    if_blk,
+    else_blk,
+    while_blk,
+}
+
 component FreestyleScreen{
     in property <string> result <=> codeArea.result;
     callback run_code <=> codeArea.run_code;
-    callback create_block();
+    callback create_block(SlintBlockType);
+    // BlockID, x, y, x displacement, y displacement
+    callback move_block(int, length, length, length, length);
     callback back_button <=> back.clicked;
+
     
     
 
@@ -268,8 +299,8 @@ component FreestyleScreen{
     }
 
     in property <[BlockData]> blocks: [
-        {block_width:10, block_color:Colors.orange, block_name:"Test block",code:"example 1"},
-        {block_width:100, block_color:Colors.orange, block_name:"Test block 2",code:"example 2"}
+        {block_id: 1,block_width:10, block_color:Colors.orange, block_name:"Test block",code:"example 1",x:0px,y:0px},
+        {block_id: 2,block_width:100, block_color:Colors.orange, block_name:"Test block 2",code:"example 2",x:300px,y:300px}
     ];
 
     codeArea := CodeArea {
@@ -301,7 +332,7 @@ component FreestyleScreen{
                 y:5px;
                 x:5px;
                 clicked => {
-                    create_block();
+                    create_block(SlintBlockType.declaration);
                 }
             }   
 
@@ -318,6 +349,14 @@ component FreestyleScreen{
         block_width: block.block_width;
         block_color: block.block_color;
         block_name: block.block_name;
+        x: block.x;
+        y: block.y;
+        block_id: block.block_id;
+        x_displacement: block.x_disp;
+        y_displacement: block.y_disp;
+        move(x, y) => {
+            move_block(self.block_id, x, y, self.x_displacement, self.y_displacement);
+        }
     }
 
 }
@@ -342,6 +381,7 @@ export component MainWindow inherits Window {
 
     in property <[BlockData]> blocks <=> fs.blocks;
     callback summon_block <=> fs.create_block;
+    callback move_fs_block <=> fs.move_block;
     ss := SelectionScreen {
         width: 100%;
         height: 100%;

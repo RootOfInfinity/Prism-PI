@@ -3,6 +3,7 @@ use std::{rc::Rc, str::FromStr, thread, vec};
 use slint::{Color, ComponentHandle, Model, invoke_from_event_loop};
 
 mod blockdata;
+mod data2gui;
 
 use super::lang::run_code;
 slint::include_modules!();
@@ -33,18 +34,49 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
 
     // Summoning a block without defined features
     let main_window_weak = main_window.as_weak();
-    main_window.on_summon_block(move || {
+    main_window.on_summon_block(move |type_of_block| {
+        match type_of_block {
+            SlintBlockType::Declaration => (),
+            _ => return,
+        }
         let main_window_weak = main_window_weak.clone();
         println!("new block");
         //figure out how to add blocks
         let mut current_blocks: Vec<BlockData> =
             main_window_weak.unwrap().get_blocks().iter().collect();
         current_blocks.push(BlockData {
+            block_id: 3,
             block_color: Color::from_rgb_u8(0, 255, 0),
             block_name: "Spawn'd Block".into(),
             block_width: 150,
             code: "no code :)".into(),
+            x: 0f32,
+            y: 0f32,
+            x_disp: 0f32,
+            y_disp: 0f32,
         });
+        invoke_from_event_loop(move || {
+            main_window_weak
+                .unwrap()
+                .set_blocks(Rc::new(slint::VecModel::from(current_blocks)).into());
+        })
+        .unwrap();
+    });
+
+    let main_window_weak = main_window.as_weak();
+    main_window.on_move_fs_block(move |id, x, y, x_disp, y_disp| {
+        println!("Moving id: {} to ({}, {})", id, x, y);
+        let main_window_weak = main_window_weak.clone();
+        let mut current_blocks: Vec<BlockData> =
+            main_window_weak.unwrap().get_blocks().iter().collect();
+        for block in current_blocks.iter_mut() {
+            if block.block_id == id {
+                block.x = x;
+                block.y = y;
+                block.x_disp = x_disp;
+                block.y_disp = y_disp;
+            }
+        }
         invoke_from_event_loop(move || {
             main_window_weak
                 .unwrap()
