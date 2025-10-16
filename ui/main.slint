@@ -178,7 +178,7 @@ component SelectionScreen {
     Rectangle {
         VerticalLayout {
             width: 100%;
-            height: 100%;
+            height: 30%;
             alignment: end;
             Text {
                 text: "Welcome to Prism Private Intelligence!";
@@ -190,24 +190,47 @@ component SelectionScreen {
                 min-height: 50px;
                 wrap: word-wrap;
             }
-            HorizontalLayout {
-                padding-top: 50px;
-                padding-left: 10px;
-                padding-right: 10px;
-                height: 30%;
-                spacing: 5px;
+            Rectangle {
                 
                 fm := Button {
+                    x: parent.width/2 - sm.width/2 - fm.width - 5px;
                     text: "Freestyle Mode";
                 }
                 sm := Button {
+                    x: parent.width/2 - sm.width/2;
                     text: "Story Mode";
                 }
                 cl := Button {
+                    x: parent.width/2 + sm.width/2 +5px;
                     text: "Custom Levels";
                 }
             }
+            // HorizontalLayout {
+            //     padding-top: 50px;
+            //     padding-left: 10px;
+            //     padding-right: 10px;
+            //     height: 30%;
+            //     spacing: 5px;
+                
+            //     fm := Button {
+            //         text: "Freestyle Mode";
+            //     }
+            //     sm := Button {
+            //         text: "Story Mode";
+            //     }
+            //     cl := Button {
+            //         text: "Custom Levels";
+            //     }
+            // }
         }
+    }
+    Image {
+        image-fit: preserve;
+        y:parent.height - self.height;
+        width: 100%;
+        vertical-alignment: bottom;
+        source: @image-url("images/tiling_city.png");
+        horizontal-tiling: repeat;
     }
 }
 
@@ -320,6 +343,8 @@ export component MainWindow inherits Window {
     in property <[BlockData]> blocks <=> fs.blocks;
     callback summon_block <=> fs.create_block;
     ss := SelectionScreen {
+        width: 100%;
+        height: 100%;
         visible: windowToSelect == SelectedWindow.select ? true : false;
         freestyleClick => {
             windowToSelect = SelectedWindow.freestyle;
