@@ -9,8 +9,6 @@ struct BlockData {
     code: string,
     x: length,
     y: length,
-    x_disp: length,
-    y_disp: length,
 }
 
 export component Block inherits Rectangle{
@@ -19,8 +17,8 @@ export component Block inherits Rectangle{
     in property <string> block_name;
     in property <string> code;
     in property <int> block_id;
-    in-out property <length> x_displacement;
-    in-out property <length> y_displacement;
+    property <length> x_displacement;
+    property <length> y_displacement;
 
     // BlockID, x, y
     callback move(length, length);
@@ -82,11 +80,7 @@ export component Block inherits Rectangle{
         }
         clicked => {
             debug("released");
-            debug("X and Y before move");
-            debug(root.x, root.y);
             move(root.x, root.y);
-            debug("X and Y after move");
-            debug(root.x, root.y);
 
 
         }
@@ -99,7 +93,7 @@ export component Block inherits Rectangle{
     }
 }
 
-export component CodeArea inherits VerticalLayout{
+export component CodeArea inherits VerticalLayout {
     
     in property <string> result: "Nothing yet";
     callback run_code(string);
@@ -122,6 +116,7 @@ export component CodeArea inherits VerticalLayout{
             spin.progress += spin.progress >= 100% ? -100% : 2%;
         }
     }
+    
 
     editor := TextEdit {
         min-width: 300px;
@@ -267,7 +262,7 @@ component FreestyleScreen{
     callback run_code <=> codeArea.run_code;
     callback create_block(SlintBlockType);
     // BlockID, x, y, x displacement, y displacement
-    callback move_block(int, length, length, length, length);
+    callback move_block(int, length, length);
     callback back_button <=> back.clicked;
 
     
@@ -352,10 +347,8 @@ component FreestyleScreen{
         x: block.x;
         y: block.y;
         block_id: block.block_id;
-        x_displacement: block.x_disp;
-        y_displacement: block.y_disp;
         move(x, y) => {
-            move_block(self.block_id, x, y, self.x_displacement, self.y_displacement);
+            move_block(self.block_id, x, y);
         }
     }
 

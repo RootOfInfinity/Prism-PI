@@ -8,13 +8,15 @@ use std::collections::HashMap;
 
 pub type BlockID = u64;
 
+#[derive(Clone, Debug)]
 pub struct Block {
-    btype: BlockType,
-    id: BlockID,
-    next: BlockID,
-    loc: (u64, u64),
-    is_root: bool,
+    pub btype: BlockType,
+    pub id: BlockID,
+    pub next: BlockID,
+    pub loc: (u64, u64),
+    pub is_root: bool,
 }
+#[derive(Clone, Debug)]
 pub enum BlockType {
     FuncStart(Func),
     Declaration(Type, Assign),
@@ -29,10 +31,12 @@ pub enum BlockType {
 
 pub type ExprID = u64;
 
+#[derive(Clone, Debug)]
 pub struct VisualExpr {
     vtype: VExprType,
     id: ExprID,
 }
+#[derive(Clone, Debug)]
 pub enum VExprType {
     BinOp(BinOperator),
     Literal(Type, Value),
@@ -40,6 +44,7 @@ pub enum VExprType {
     None,
 }
 
+#[derive(Clone, Debug)]
 pub enum Value {
     Int(i32),
     Dcml(f64),
@@ -47,6 +52,7 @@ pub enum Value {
     None,
 }
 
+#[derive(Clone, Debug)]
 pub enum Type {
     Int,
     Dcml,
@@ -56,22 +62,26 @@ pub enum Type {
 
 // Helper structs for BlockType
 
+#[derive(Clone, Debug)]
 pub struct Func {
     fname: String,
     ret_type: Type,
     args: Vec<(String, Type)>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Assign {
     vname: String,
     set_to: ExprID,
 }
 
+#[derive(Clone, Debug)]
 pub struct IfBlk {
     cond: ExprID,
     if_stuff: BlockID,
 }
 
+#[derive(Clone, Debug)]
 pub struct WhileBlk {
     cond: ExprID,
     while_stuff: BlockID,
@@ -79,12 +89,14 @@ pub struct WhileBlk {
 
 // Helper structs for VisualExpr
 
+#[derive(Clone, Debug)]
 pub struct BinOperator {
     op_enum: BinOp,
     left: ExprID,
     right: ExprID,
 }
 
+#[derive(Clone, Debug)]
 pub enum BinOp {
     // Basic arithmetic
     Add,

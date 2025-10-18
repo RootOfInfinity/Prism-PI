@@ -1,5 +1,12 @@
-use std::{rc::Rc, str::FromStr, thread, vec};
+use std::{
+    collections::HashMap,
+    rc::Rc,
+    str::FromStr,
+    sync::{Arc, Mutex},
+    thread, vec,
+};
 
+use blockdata::World;
 use slint::{Color, ComponentHandle, Model, invoke_from_event_loop};
 
 mod blockdata;
@@ -11,6 +18,8 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     // main func for gui tests
     println!("gui stuff");
     let main_window = MainWindow::new()?;
+
+    let world: Arc<Mutex<World>> = Arc::new(Mutex::new((HashMap::new(), HashMap::new())));
 
     // CALLBACK BINDINGS //
 
@@ -52,8 +61,6 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
             code: "no code :)".into(),
             x: 0f32,
             y: 0f32,
-            x_disp: 0f32,
-            y_disp: 0f32,
         });
         invoke_from_event_loop(move || {
             main_window_weak
@@ -63,9 +70,9 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         .unwrap();
     });
 
+    let world_clone = Arc::clone(&world);
     let main_window_weak = main_window.as_weak();
-    main_window.on_move_fs_block(move |id, x, y, x_disp, y_disp| {
-        println!("Moving id: {} to ({}, {})", id, x, y);
+    main_window.on_move_fs_block(move |id, x, y| {
         let main_window_weak = main_window_weak.clone();
         let mut current_blocks: Vec<BlockData> =
             main_window_weak.unwrap().get_blocks().iter().collect();
@@ -73,8 +80,6 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
             if block.block_id == id {
                 block.x = x;
                 block.y = y;
-                block.x_disp = x_disp;
-                block.y_disp = y_disp;
             }
         }
         invoke_from_event_loop(move || {
