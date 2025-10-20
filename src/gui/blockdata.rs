@@ -77,14 +77,14 @@ pub struct Assign {
 
 #[derive(Clone, Debug)]
 pub struct IfBlk {
-    cond: ExprID,
-    if_stuff: BlockID,
+    pub cond: ExprID,
+    pub if_stuff: BlockID,
 }
 
 #[derive(Clone, Debug)]
 pub struct WhileBlk {
-    cond: ExprID,
-    while_stuff: BlockID,
+    pub cond: ExprID,
+    pub while_stuff: BlockID,
 }
 
 // Helper structs for VisualExpr

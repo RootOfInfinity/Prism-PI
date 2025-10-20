@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use slint::{Color, ToSharedString};
 
+use crate::gui::blockdata::{BlockType, IfBlk};
+
 use super::{
     BlockData,
     blockdata::{Block, BlockID, ExprID, World},
@@ -11,11 +13,49 @@ fn ylength_for_blocks(world: &World) -> (HashMap<BlockID, u64>, HashMap<ExprID, 
     todo!()
 }
 
-fn ylength_for_block_recur(
-    world: &World,
-    block: Block,
-) -> (HashMap<BlockID, u64>, HashMap<ExprID, u64>) {
-    todo!()
+fn ylength_for_block_recur(world: &World, block: Block) -> HashMap<BlockID, u64> {
+    let mut new_block_map: HashMap<BlockID, u64> = HashMap::new();
+    let cur_len = match block.btype {
+        BlockType::FuncStart(_) => 126 / 2,
+        BlockType::Declaration(_, _) => 126 / 2,
+        BlockType::Assignment(_) => 126 / 2,
+        BlockType::Expression(_) => 126 / 2,
+        BlockType::Return(_) => 126 / 2,
+        BlockType::If(ifblk) => {
+            let new_map =
+                ylength_for_block_recur(world, world.0.get(&ifblk.if_stuff).unwrap().clone());
+            let len: u64 = new_map.values().sum();
+            new_block_map.extend(new_map);
+            len + 126 / 2
+        }
+        BlockType::IfElse(ifblk, elseblock) => {
+            let mut new_map =
+                ylength_for_block_recur(world, world.0.get(&ifblk.if_stuff).unwrap().clone());
+            new_map.extend(ylength_for_block_recur(
+                world,
+                world.0.get(&elseblock).unwrap().clone(),
+            ));
+            let len: u64 = new_map.values().sum();
+            new_block_map.extend(new_map);
+            len + 126 / 2 + 126 / 2
+        }
+        BlockType::While(whileblk) => {
+            let new_map =
+                ylength_for_block_recur(world, world.0.get(&whileblk.while_stuff).unwrap().clone());
+            let len: u64 = new_map.values().sum();
+            new_block_map.extend(new_map);
+            len + 126 / 2
+        }
+        BlockType::None => 0,
+    };
+    new_block_map.insert(block.id, cur_len);
+    if !matches!(world.0.get(&block.next).unwrap().btype, BlockType::None) {
+        new_block_map.extend(ylength_for_block_recur(
+            world,
+            world.0.get(&block.next).unwrap().clone(),
+        ));
+    }
+    new_block_map
 }
 
 fn location_for_blocks(
@@ -27,7 +67,7 @@ fn location_for_blocks(
 
 fn location_for_block_recur(
     world: &World,
-    length: &(HashMap<BlockID, u64>, HashMap<ExprID, u64>),
+    length: &HashMap<BlockID, u64>,
     block: Block,
     x: u64,
     y: u64,
@@ -43,10 +83,10 @@ fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> {
         }
     }
 
-    let mut lengthmap = (HashMap::new(), HashMap::new());
+    let mut lengthmap = HashMap::new();
     for root in rootvec.iter() {
         let new_map = ylength_for_block_recur(world, (*world.0.get(&root).unwrap()).clone());
-        lengthmap.0.extend(new_map.0);
+        lengthmap.extend(new_map);
     }
 
     let mut locmap = (HashMap::new(), HashMap::<ExprID, u64>::new());
