@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    ops::DerefMut,
     rc::Rc,
     str::FromStr,
     sync::{Arc, Mutex},
@@ -29,6 +30,20 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         message_contents: String::new(),
     }));
 
+    let message_clone = Arc::clone(&messages);
+    let send_message = |mtype: MessageType, cont: String| {
+        let mut message_lock = message_clone.lock().unwrap();
+        let new_message = Message {
+            message_type: mtype,
+            message_contents: cont,
+        };
+        *message_lock.deref_mut() = new_message;
+    };
+
+    fn ask_popup(message: Message, window: &slint::Weak<MainWindow>) {
+        todo!()
+    }
+
     // CALLBACK BINDINGS //
 
     // Running a string of freestyle code and updating
@@ -54,6 +69,9 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     main_window.on_summon_block(move |type_of_block| {
         match type_of_block {
             SlintBlockType::Declaration => (),
+            SlintBlockType::Expression => {
+                // ask for the popup, then wait until message is filled.
+            }
             _ => return,
         }
         let main_window_weak = main_window_weak.clone();
