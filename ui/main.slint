@@ -93,6 +93,68 @@ export component Block inherits Rectangle{
     }
 }
 
+enum MessageType {
+    func_name,
+    func_type,
+    func_args,
+
+    decl_type,
+    decl_name,
+    decl_expr,
+
+    assign_name,
+    assign_expr,
+
+    expr_expr,
+
+    return_expr,
+
+    if_cond,
+
+    if_else_cond,
+
+    while_cond,
+
+    none,
+}
+
+// for setting things like exprs automagically
+export component PopUp inherits VerticalLayout {
+    // in property <string> cur_message: "Default popup";
+    in property <MessageType> cur_message_type;
+    callback send_message(MessageType, string);
+    function appear(mtype: MessageType, querytext: string) {
+        self.visible = true;
+        query.text = querytext;
+        input-field.text = "";
+        input-field.enabled = true;
+    }
+    function disappear() {
+        self.visible = false;
+        send_message(cur_message_type, input-field.text);
+        input-field.text = "";
+        input-field.enabled = false;
+    }
+    visible: false;
+
+    query := Text {
+        text: "";
+    }
+    input_field := LineEdit {
+        text: "";
+        enabled: false;
+        accepted => {
+            disappear();
+        }
+    }
+    submit_box := Button {
+        text: "Submit";
+        clicked => {
+            disappear();
+        }
+    }
+}
+
 export component CodeArea inherits VerticalLayout {
     
     in property <string> result: "Nothing yet";
