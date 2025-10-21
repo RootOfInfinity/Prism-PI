@@ -29,6 +29,8 @@ impl ParsingMachine {
             finished: false,
         }
     }
+
+    /// for the now deprecated REPL
     pub fn append_tok(&mut self, new_stuff: Vec<(Token, Loc)>) {
         for thing in new_stuff {
             self.tok_vec.push_back(thing);
@@ -112,7 +114,7 @@ impl ParsingMachine {
         if !matches!(self.cur_tok.0, Token::LeftCurly) {
             return Err(self.err("Expected a block".to_string()));
         }
-        let stloc = self.cur_tok.1.clone();
+        // let stloc = self.cur_tok.1.clone();
         self.eat_tok(); // eat left curly
         let mut state_vec: Vec<Statement> = Vec::new();
         while !matches!(self.cur_tok.0, Token::RightCurly) {

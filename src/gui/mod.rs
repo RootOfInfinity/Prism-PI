@@ -7,10 +7,12 @@ use std::{
 };
 
 use blockdata::World;
+use popup_asker::{Message, MessageType};
 use slint::{Color, ComponentHandle, Model, invoke_from_event_loop};
 
 mod blockdata;
 mod data2gui;
+mod popup_asker;
 
 use super::lang::run_code;
 slint::include_modules!();
@@ -19,7 +21,13 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     println!("gui stuff");
     let main_window = MainWindow::new()?;
 
+    // all the blocks in the data structure
     let world: Arc<Mutex<World>> = Arc::new(Mutex::new((HashMap::new(), HashMap::new())));
+    // messages to pass from a popup window
+    let messages: Arc<Mutex<Message>> = Arc::new(Mutex::new(Message {
+        message_type: MessageType::None,
+        message_contents: String::new(),
+    }));
 
     // CALLBACK BINDINGS //
 
