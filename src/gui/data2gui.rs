@@ -9,10 +9,6 @@ use super::{
     blockdata::{Block, BlockID, ExprID, World},
 };
 
-fn ylength_for_blocks(world: &World) -> (HashMap<BlockID, u64>, HashMap<ExprID, u64>) {
-    todo!()
-}
-
 fn ylength_for_block_recur(world: &World, block: Block) -> HashMap<BlockID, u64> {
     let mut new_block_map: HashMap<BlockID, u64> = HashMap::new();
     let cur_len = match block.btype {
@@ -58,13 +54,6 @@ fn ylength_for_block_recur(world: &World, block: Block) -> HashMap<BlockID, u64>
     new_block_map
 }
 
-fn location_for_blocks(
-    world: &World,
-    length: &(HashMap<BlockID, u64>, HashMap<ExprID, u64>),
-) -> (HashMap<BlockID, (u64, u64)>, HashMap<ExprID, (u64, u64)>) {
-    todo!()
-}
-
 fn location_for_block_recur(
     world: &World,
     length: &HashMap<BlockID, u64>,
@@ -72,7 +61,72 @@ fn location_for_block_recur(
     x: u64,
     y: u64,
 ) -> (HashMap<BlockID, (u64, u64)>, HashMap<ExprID, (u64, u64)>) {
-    todo!()
+    let mut new_location_map: (HashMap<BlockID, (u64, u64)>, HashMap<ExprID, (u64, u64)>) =
+        (HashMap::new(), HashMap::new());
+    let cur_loc = match block.btype {
+        BlockType::FuncStart(_)
+        | BlockType::Declaration(_, _)
+        | BlockType::Assignment(_)
+        | BlockType::Expression(_)
+        | BlockType::Return(_) => (x, y),
+        BlockType::If(ifblk) => {
+            let ifmap = location_for_block_recur(
+                world,
+                length,
+                world.0.get(&ifblk.if_stuff).unwrap().clone(),
+                x + 50,
+                y + 126 / 2,
+            );
+            new_location_map.0.extend(ifmap.0);
+            new_location_map.1.extend(ifmap.1);
+            (x, y)
+        }
+        BlockType::IfElse(ifblk, elseblock) => {
+            let ifmap = location_for_block_recur(
+                world,
+                length,
+                world.0.get(&ifblk.if_stuff).unwrap().clone(),
+                x + 50,
+                y + 126 / 2,
+            );
+            new_location_map.0.extend(ifmap.0);
+            new_location_map.1.extend(ifmap.1);
+            let elsemap = location_for_block_recur(
+                world,
+                length,
+                world.0.get(&elseblock).unwrap().clone(),
+                x + 50,
+                y + 126 / 2,
+            );
+            new_location_map.0.extend(elsemap.0);
+            new_location_map.1.extend(elsemap.1);
+            (x, y)
+        }
+        BlockType::While(whileblk) => {
+            let whilemap = location_for_block_recur(
+                world,
+                length,
+                world.0.get(&whileblk.while_stuff).unwrap().clone(),
+                x + 50,
+                y + 126 / 2,
+            );
+            new_location_map.0.extend(whilemap.0);
+            new_location_map.1.extend(whilemap.1);
+            (x, y)
+        }
+        BlockType::None => (0, 0),
+    };
+    new_location_map.0.insert(block.id, cur_loc);
+    let next_loc_map = location_for_block_recur(
+        world,
+        length,
+        world.0.get(&block.next).unwrap().clone(),
+        x,
+        y + length.get(&block.next).unwrap(),
+    );
+    new_location_map.0.extend(next_loc_map.0);
+    new_location_map.1.extend(next_loc_map.1);
+    new_location_map
 }
 
 fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> {
