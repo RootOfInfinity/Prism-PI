@@ -131,8 +131,7 @@ fn location_for_block_recur(
     new_location_map
 }
 
-pub fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> {
-    println!("Started on that blockdata");
+pub fn create_blockdata_from_world(world: &mut World) -> slint::VecModel<BlockData> {
     let mut rootvec = Vec::new();
     for blk in world.0.values() {
         if blk.is_root {
@@ -155,9 +154,16 @@ pub fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> 
             .extend(location_for_block_recur(world, &lengthmap, block, x, y).0);
     }
 
+    for (key, (x, y)) in locmap.0.iter() {
+        println!("Location of id {}: ({}, {})", key, x, y);
+    }
+
+    for block in world.0.values_mut() {
+        block.length = *lengthmap.get(&block.id).unwrap();
+    }
+
     let mut blkdatavec = Vec::new();
     for block in world.0.values() {
-        println!("Found block: {:#?}", block);
         blkdatavec.push(match block.btype.clone() {
             BlockType::Expression(s) => BlockData {
                 block_color: Color::from_rgb_u8(255, 0, 0),

@@ -41,11 +41,6 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
             message_contents: cont.to_string(),
         };
         *message_lock.deref_mut() = new_message;
-        println!(
-            "Got the message in rust! Type is: {:#?} and message is '{}'.",
-            mtype,
-            cont.to_string()
-        );
     });
 
     // CALLBACK BINDINGS //
@@ -94,11 +89,9 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
                         std::thread::sleep(Duration::from_millis(100));
                         let messagelock = message_clone.lock().unwrap();
                         if let MessageType::ExprExpr = messagelock.message_type {
-                            println!("Successfully got a response");
                             break messagelock.message_contents.clone();
                         }
                     };
-                    println!("Is it this?");
                     let mut messagelock = message_clone.lock().unwrap();
                     *messagelock.deref_mut() = Message {
                         message_type: MessageType::None,
@@ -114,17 +107,19 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
                             next: 0,
                             loc: (300, 300),
                             is_root: true,
+                            length: 126 / 2,
                         },
                     );
                     lock.3 += 1;
                     std::mem::drop(messagelock);
-                    println!("Actually got to invoke the thing from event loop");
                     let main_window_weak = main_window_weak.clone();
                     let world_clone = Arc::clone(&world_clone);
                     invoke_from_event_loop(move || {
                         main_window_weak.unwrap().set_blocks(
-                            Rc::new(create_blockdata_from_world(&world_clone.lock().unwrap()))
-                                .into(),
+                            Rc::new(create_blockdata_from_world(
+                                &mut world_clone.lock().unwrap(),
+                            ))
+                            .into(),
                         );
                     })
                     .unwrap();
@@ -136,12 +131,25 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         }
     });
 
+    let main_window_weak = main_window.as_weak();
     let world_clone = Arc::clone(&world);
     main_window.on_move_fs_block(move |id, x, y| {
         world_clone
             .lock()
             .unwrap()
             .move_block(id as u64, x as u64, y as u64);
+
+        let main_window_weak = main_window_weak.clone();
+        let world_clone = Arc::clone(&world_clone);
+        invoke_from_event_loop(move || {
+            main_window_weak.unwrap().set_blocks(
+                Rc::new(create_blockdata_from_world(
+                    &mut world_clone.lock().unwrap(),
+                ))
+                .into(),
+            );
+        })
+        .unwrap()
     });
 
     main_window.run()

@@ -15,6 +15,7 @@ pub struct Block {
     pub next: BlockID,
     pub loc: (u64, u64),
     pub is_root: bool,
+    pub length: u64,
 }
 #[derive(Clone, Debug)]
 pub enum BlockType {
@@ -185,6 +186,7 @@ pub trait WorldManipulation {
 
 impl WorldManipulation for World {
     fn attach(&mut self, block: BlockID, attaching: BlockID) {
+        self.0.get_mut(&attaching).unwrap().is_root = false;
         self.0.get_mut(&block).unwrap().next = attaching;
     }
     fn rem(&mut self, block_deleted: BlockID) {
@@ -257,6 +259,7 @@ impl WorldManipulation for World {
         self.0.get_mut(&detaching).unwrap().is_root = true;
     }
     fn attach_if(&mut self, block: BlockID, attaching: BlockID) {
+        self.0.get_mut(&attaching).unwrap().is_root = false;
         match self.0.get_mut(&block).unwrap().btype {
             BlockType::If(IfBlk {
                 cond: _,
@@ -273,12 +276,14 @@ impl WorldManipulation for World {
         }
     }
     fn attach_else(&mut self, block: BlockID, attaching: BlockID) {
+        self.0.get_mut(&attaching).unwrap().is_root = false;
         match self.0.get_mut(&block).unwrap().btype {
             BlockType::IfElse(_, ref mut x) => *x = attaching,
             _ => (),
         }
     }
     fn attach_while(&mut self, block: BlockID, attaching: BlockID) {
+        self.0.get_mut(&attaching).unwrap().is_root = false;
         match self.0.get_mut(&block).unwrap().btype {
             BlockType::While(WhileBlk {
                 cond: _,
@@ -295,6 +300,53 @@ impl WorldManipulation for World {
         // add stuff for dealing with attachment and detachment.
         if !is_root {
             self.detach(block);
+        }
+        let mut attach_to = 0;
+        let mut attach_to_if = 0;
+        let mut attach_to_while = 0;
+        println!("Block val is {},{}", x, y);
+        for blocky in self.0.values() {
+            println!(
+                "Block yval must be within {}-{}",
+                blocky.loc.1 - 15 + blocky.length,
+                blocky.loc.1 + 15 + blocky.length
+            );
+            if blocky.next == 0
+                && (x > blocky.loc.0 - 15 && x < blocky.loc.0 + 15)
+                && (y > blocky.loc.1 - 15 + blocky.length && y < blocky.loc.1 + 15 + blocky.length)
+            {
+                println!("Can attach!");
+                attach_to = blocky.id;
+            }
+            if (x > blocky.loc.0 - 15 && x < blocky.loc.0 + 15)
+                && (y > blocky.loc.1 - 15 + 126 / 2 && y < blocky.loc.1 + 15 + 126 / 2)
+            {
+                match blocky.btype {
+                    BlockType::If(IfBlk {
+                        cond: _,
+                        if_stuff: x,
+                    }) if x == 0 => {
+                        attach_to_if = blocky.id;
+                    }
+                    BlockType::While(WhileBlk {
+                        cond: _,
+                        while_stuff: x,
+                    }) if x == 0 => {
+                        attach_to_while = blocky.id;
+                    }
+                    _ => (),
+                }
+            }
+        }
+        if attach_to != 0 {
+            self.attach(attach_to, block);
+            for block in self.0.values() {
+                println!("{:#?}", block);
+            }
+        } else if attach_to_if != 0 {
+            self.attach_if(attach_to_if, block);
+        } else if attach_to_while != 0 {
+            self.attach_while(attach_to_while, block);
         }
     }
 }
