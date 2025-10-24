@@ -45,7 +45,7 @@ fn ylength_for_block_recur(world: &World, block: Block) -> HashMap<BlockID, u64>
         BlockType::None => 0,
     };
     new_block_map.insert(block.id, cur_len);
-    if !matches!(world.0.get(&block.next).unwrap().btype, BlockType::None) {
+    if block.next != 0 && !matches!(world.0.get(&block.next).unwrap().btype, BlockType::None) {
         new_block_map.extend(ylength_for_block_recur(
             world,
             world.0.get(&block.next).unwrap().clone(),
@@ -117,19 +117,22 @@ fn location_for_block_recur(
         BlockType::None => (0, 0),
     };
     new_location_map.0.insert(block.id, cur_loc);
-    let next_loc_map = location_for_block_recur(
-        world,
-        length,
-        world.0.get(&block.next).unwrap().clone(),
-        x,
-        y + length.get(&block.next).unwrap(),
-    );
-    new_location_map.0.extend(next_loc_map.0);
-    new_location_map.1.extend(next_loc_map.1);
+    if block.next != 0 {
+        let next_loc_map = location_for_block_recur(
+            world,
+            length,
+            world.0.get(&block.next).unwrap().clone(),
+            x,
+            y + length.get(&block.next).unwrap(),
+        );
+        new_location_map.0.extend(next_loc_map.0);
+        new_location_map.1.extend(next_loc_map.1);
+    }
     new_location_map
 }
 
-fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> {
+pub fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> {
+    println!("Started on that blockdata");
     let mut rootvec = Vec::new();
     for blk in world.0.values() {
         if blk.is_root {
@@ -154,14 +157,18 @@ fn create_blockdata_from_world(world: &World) -> slint::VecModel<BlockData> {
 
     let mut blkdatavec = Vec::new();
     for block in world.0.values() {
-        blkdatavec.push(BlockData {
-            block_color: Color::from_rgb_u8(255, 0, 0),
-            block_id: block.id as i32,
-            block_name: "Created From World".to_shared_string(),
-            block_width: 50,
-            code: "Default code lol".to_shared_string(),
-            x: locmap.0.get(&block.id).unwrap().0 as f32,
-            y: locmap.0.get(&block.id).unwrap().1 as f32,
+        println!("Found block: {:#?}", block);
+        blkdatavec.push(match block.btype.clone() {
+            BlockType::Expression(s) => BlockData {
+                block_color: Color::from_rgb_u8(255, 0, 0),
+                block_id: block.id as i32,
+                block_name: s.to_shared_string(),
+                block_width: 50,
+                code: (s + ";").to_shared_string(),
+                x: locmap.0.get(&block.id).unwrap().0 as f32,
+                y: locmap.0.get(&block.id).unwrap().1 as f32,
+            },
+            _ => panic!("Got non expression"),
         });
     }
     return blkdatavec.into();

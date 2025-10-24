@@ -21,8 +21,10 @@ pub enum BlockType {
     FuncStart(Func),
     Declaration(Type, Assign),
     Assignment(Assign),
-    Expression(VisualExpr),
-    Return(VisualExpr),
+    Expression(String),
+    // Expression(VisualExpr),
+    Return(String),
+    // Return(VisualExpr),
     If(IfBlk),
     IfElse(IfBlk, BlockID),
     While(WhileBlk),
@@ -34,7 +36,8 @@ pub type ExprID = u64;
 #[derive(Clone, Debug)]
 pub struct VisualExpr {
     vtype: VExprType,
-    id: ExprID,
+    id: String,
+    // id: ExprID,
 }
 #[derive(Clone, Debug)]
 pub enum VExprType {
@@ -72,18 +75,21 @@ pub struct Func {
 #[derive(Clone, Debug)]
 pub struct Assign {
     vname: String,
-    set_to: ExprID,
+    set_to: String,
+    // set_to: ExprID,
 }
 
 #[derive(Clone, Debug)]
 pub struct IfBlk {
-    pub cond: ExprID,
+    pub cond: String,
+    // pub cond: ExprID,
     pub if_stuff: BlockID,
 }
 
 #[derive(Clone, Debug)]
 pub struct WhileBlk {
-    pub cond: ExprID,
+    pub cond: String,
+    // pub cond: ExprID,
     pub while_stuff: BlockID,
 }
 
@@ -92,8 +98,10 @@ pub struct WhileBlk {
 #[derive(Clone, Debug)]
 pub struct BinOperator {
     op_enum: BinOp,
-    left: ExprID,
-    right: ExprID,
+    left: String,
+    // left: ExprID,
+    right: String,
+    // right: ExprID,
 }
 
 #[derive(Clone, Debug)]
@@ -124,18 +132,23 @@ pub enum BinOp {
 // Point is, we can make the backend of the blocks seperate from the UI of the blocks.
 // Just like with the text language.
 
-pub type World = (HashMap<BlockID, Block>, HashMap<ExprID, VisualExpr>);
+pub type World = (
+    HashMap<BlockID, Block>,
+    HashMap<ExprID, VisualExpr>,
+    u64,
+    u64,
+);
 
 pub trait WorldManipulation {
     // new Blocks
-    fn new_func(&mut self);
-    fn new_decl(&mut self);
-    fn new_assign(&mut self);
-    fn new_expression(&mut self);
-    fn new_return(&mut self);
-    fn new_if(&mut self);
-    fn new_ifelse(&mut self);
-    fn new_while(&mut self);
+    // fn new_func(&mut self);
+    // fn new_decl(&mut self);
+    // fn new_assign(&mut self);
+    // fn new_expression(&mut self);
+    // fn new_return(&mut self);
+    // fn new_if(&mut self);
+    // fn new_ifelse(&mut self);
+    // fn new_while(&mut self);
 
     // manipulating Blocks
     fn attach(&mut self, block: BlockID, attaching: BlockID);
@@ -144,29 +157,54 @@ pub trait WorldManipulation {
     fn attach_if(&mut self, block: BlockID, attaching: BlockID);
     fn attach_else(&mut self, block: BlockID, attaching: BlockID);
     fn attach_while(&mut self, block: BlockID, attaching: BlockID);
+    fn move_block(&mut self, block: BlockID, x: u64, y: u64);
 
-    fn affix_binop(&mut self, block: BlockID, expr: ExprID);
-    fn affix_literal(&mut self, block: BlockID, expr: ExprID);
-    fn affix_variable(&mut self, block: BlockID, expr: ExprID);
-    fn affix_var_in_assign(&mut self, block: BlockID, var: ExprID);
+    // fn affix_binop(&mut self, block: BlockID, expr: ExprID);
+    // fn affix_literal(&mut self, block: BlockID, expr: ExprID);
+    // fn affix_variable(&mut self, block: BlockID, expr: ExprID);
+    // fn affix_var_in_assign(&mut self, block: BlockID, var: ExprID);
 
-    /// turns the type of decl and func to said type
-    fn change_type(&mut self, block: BlockID, btype: Type);
-    /// changes the name of decl block
-    fn change_name_decl_block(&mut self, block: BlockID, name: String);
+    // /// turns the type of decl and func to said type
+    // fn change_type(&mut self, block: BlockID, btype: Type);
+    // /// changes the name of decl block
+    // fn change_name_decl_block(&mut self, block: BlockID, name: String);
 
-    // new Exprs
-    fn new_operator(&mut self, op: BinOp);
-    fn new_literal(&mut self, val: Value);
-    fn new_variable(&mut self, name: String);
+    // // new Exprs
+    // fn new_operator(&mut self, op: BinOp);
+    // fn new_literal(&mut self, val: Value);
+    // fn new_variable(&mut self, name: String);
 
-    // affix to op Expr
-    fn op_affix_left(&mut self, op: ExprID, id: ExprID);
-    fn op_affix_right(&mut self, op: ExprID, id: ExprID);
+    // // affix to op Expr
+    // fn op_affix_left(&mut self, op: ExprID, id: ExprID);
+    // fn op_affix_right(&mut self, op: ExprID, id: ExprID);
 
-    // change values of the Exprs
-    fn change_lit_val(&mut self, expr: ExprID, val: Value);
-    fn change_var_name(&mut self, expr: ExprID, name: String);
+    // // change values of the Exprs
+    // fn change_lit_val(&mut self, expr: ExprID, val: Value);
+    // fn change_var_name(&mut self, expr: ExprID, name: String);
 }
 
-// impl WorldManipulation for World {}
+impl WorldManipulation for World {
+    fn attach(&mut self, block: BlockID, attaching: BlockID) {}
+    fn rem(&mut self, block_deleted: BlockID) {
+        // finds all blocks derived from this one and stores in hashmap
+        // clears all of them from the world, including the starting one.
+    }
+    fn detach(&mut self, detaching: BlockID) {
+        // finds connection to the block
+        // sets it to 0.
+        // turns block into root
+    }
+    fn attach_if(&mut self, block: BlockID, attaching: BlockID) {}
+    fn attach_else(&mut self, block: BlockID, attaching: BlockID) {}
+    fn attach_while(&mut self, block: BlockID, attaching: BlockID) {}
+    fn move_block(&mut self, block: BlockID, x: u64, y: u64) {
+        let real_block = self.0.get_mut(&block).unwrap();
+        let is_root = real_block.is_root;
+        real_block.loc.0 = x;
+        real_block.loc.1 = y;
+        // add stuff for dealing with attachment and detachment.
+        if !is_root {
+            self.detach(block);
+        }
+    }
+}

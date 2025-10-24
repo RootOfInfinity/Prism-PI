@@ -121,11 +121,12 @@ enum MessageType {
 // for setting things like exprs automagically
 export component PopUp inherits VerticalLayout {
     // in property <string> cur_message: "Default popup";
-    in property <MessageType> cur_message_type;
+    property <MessageType> cur_message_type;
     callback send_message(MessageType, string);
-    function appear(mtype: MessageType, querytext: string) {
+    public function appear(mtype: MessageType, querytext: string) {
         self.visible = true;
         query.text = querytext;
+        cur_message_type = mtype;
         input-field.text = "";
         input-field.enabled = true;
     }
@@ -326,6 +327,10 @@ component FreestyleScreen{
     // BlockID, x, y, x displacement, y displacement
     callback move_block(int, length, length);
     callback back_button <=> back.clicked;
+    callback send_message <=> popup.send_message;
+    public function appear_message(mtype: MessageType, querytext: string) {
+        popup.appear(mtype, querytext);
+    }
 
     
     
@@ -371,6 +376,12 @@ component FreestyleScreen{
     
     //block area
     
+    popup := PopUp {
+        width: 50%;
+        height: 50%;
+    }
+
+    
     Rectangle {
         x: 5px + back.width + 5px + codeArea.width + 5px;
         y: 5px;
@@ -389,7 +400,7 @@ component FreestyleScreen{
                 y:5px;
                 x:5px;
                 clicked => {
-                    create_block(SlintBlockType.declaration);
+                    create_block(SlintBlockType.expression);
                 }
             }   
 
@@ -437,6 +448,11 @@ export component MainWindow inherits Window {
     in property <[BlockData]> blocks <=> fs.blocks;
     callback summon_block <=> fs.create_block;
     callback move_fs_block <=> fs.move_block;
+    callback send_message_freestyle <=> fs.send_message;
+    public function freestyle_popup_appear(mtype: MessageType, querytext: string) {
+        debug("Message to popup: ", querytext);
+        fs.appear_message(mtype, querytext);
+    }
     ss := SelectionScreen {
         width: 100%;
         height: 100%;

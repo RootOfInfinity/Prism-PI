@@ -4,12 +4,15 @@ use std::{
     rc::Rc,
     str::FromStr,
     sync::{Arc, Mutex},
-    thread, vec,
+    thread,
+    time::Duration,
+    vec,
 };
 
-use blockdata::World;
-use popup_asker::{Message, MessageType};
-use slint::{Color, ComponentHandle, Model, invoke_from_event_loop};
+use blockdata::{Block, BlockType, World, WorldManipulation};
+use data2gui::create_blockdata_from_world;
+use popup_asker::{Message, ask_popup};
+use slint::{Color, ComponentHandle, Model, ToSharedString, invoke_from_event_loop};
 
 mod blockdata;
 mod data2gui;
@@ -23,7 +26,7 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     let main_window = MainWindow::new()?;
 
     // all the blocks in the data structure
-    let world: Arc<Mutex<World>> = Arc::new(Mutex::new((HashMap::new(), HashMap::new())));
+    let world: Arc<Mutex<World>> = Arc::new(Mutex::new((HashMap::new(), HashMap::new(), 1, 1)));
     // messages to pass from a popup window
     let messages: Arc<Mutex<Message>> = Arc::new(Mutex::new(Message {
         message_type: MessageType::None,
@@ -31,18 +34,19 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     }));
 
     let message_clone = Arc::clone(&messages);
-    let send_message = |mtype: MessageType, cont: String| {
+    main_window.on_send_message_freestyle(move |mtype: MessageType, cont: slint::SharedString| {
         let mut message_lock = message_clone.lock().unwrap();
         let new_message = Message {
             message_type: mtype,
-            message_contents: cont,
+            message_contents: cont.to_string(),
         };
         *message_lock.deref_mut() = new_message;
-    };
-
-    fn ask_popup(message: Message, window: &slint::Weak<MainWindow>) {
-        todo!()
-    }
+        println!(
+            "Got the message in rust! Type is: {:#?} and message is '{}'.",
+            mtype,
+            cont.to_string()
+        );
+    });
 
     // CALLBACK BINDINGS //
 
@@ -65,55 +69,79 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     });
 
     // Summoning a block without defined features
+    let message_clone = Arc::clone(&messages);
     let main_window_weak = main_window.as_weak();
+    let world_clone = Arc::clone(&world);
     main_window.on_summon_block(move |type_of_block| {
         match type_of_block {
-            SlintBlockType::Declaration => (),
+            SlintBlockType::Declaration => return,
             SlintBlockType::Expression => {
+                ask_popup(
+                    Message {
+                        message_type: MessageType::ExprExpr,
+                        message_contents: String::from(
+                            "Please put in expression for the expression block.",
+                        ),
+                    },
+                    &main_window_weak,
+                );
+
+                let message_clone = Arc::clone(&message_clone);
+                let world_clone = Arc::clone(&world_clone);
+                let main_window_weak = main_window_weak.clone();
+                thread::spawn(move || {
+                    let response = loop {
+                        std::thread::sleep(Duration::from_millis(100));
+                        let messagelock = message_clone.lock().unwrap();
+                        if let MessageType::ExprExpr = messagelock.message_type {
+                            println!("Successfully got a response");
+                            break messagelock.message_contents.clone();
+                        }
+                    };
+                    println!("Is it this?");
+                    let mut messagelock = message_clone.lock().unwrap();
+                    *messagelock.deref_mut() = Message {
+                        message_type: MessageType::None,
+                        message_contents: String::new(),
+                    };
+                    let mut lock = world_clone.lock().unwrap();
+                    let current_id = lock.3;
+                    lock.0.insert(
+                        current_id,
+                        Block {
+                            btype: BlockType::Expression(response),
+                            id: current_id,
+                            next: 0,
+                            loc: (300, 300),
+                            is_root: true,
+                        },
+                    );
+                    lock.3 += 1;
+                    std::mem::drop(messagelock);
+                    println!("Actually got to invoke the thing from event loop");
+                    let main_window_weak = main_window_weak.clone();
+                    let world_clone = Arc::clone(&world_clone);
+                    invoke_from_event_loop(move || {
+                        main_window_weak.unwrap().set_blocks(
+                            Rc::new(create_blockdata_from_world(&world_clone.lock().unwrap()))
+                                .into(),
+                        );
+                    })
+                    .unwrap();
+                });
+
                 // ask for the popup, then wait until message is filled.
             }
             _ => return,
         }
-        let main_window_weak = main_window_weak.clone();
-        println!("new block");
-        //figure out how to add blocks
-        let mut current_blocks: Vec<BlockData> =
-            main_window_weak.unwrap().get_blocks().iter().collect();
-        current_blocks.push(BlockData {
-            block_id: 3,
-            block_color: Color::from_rgb_u8(0, 255, 0),
-            block_name: "Spawn'd Block".into(),
-            block_width: 150,
-            code: "no code :)".into(),
-            x: 0f32,
-            y: 0f32,
-        });
-        invoke_from_event_loop(move || {
-            main_window_weak
-                .unwrap()
-                .set_blocks(Rc::new(slint::VecModel::from(current_blocks)).into());
-        })
-        .unwrap();
     });
 
     let world_clone = Arc::clone(&world);
-    let main_window_weak = main_window.as_weak();
     main_window.on_move_fs_block(move |id, x, y| {
-        let main_window_weak = main_window_weak.clone();
-        let mut current_blocks: Vec<BlockData> =
-            main_window_weak.unwrap().get_blocks().iter().collect();
-        for block in current_blocks.iter_mut() {
-            if block.block_id == id {
-                block.x = x;
-                block.y = y;
-            }
-        }
-        invoke_from_event_loop(move || {
-            main_window_weak
-                .unwrap()
-                .set_blocks(Rc::new(slint::VecModel::from(current_blocks)).into());
-        })
-        .unwrap();
+        world_clone
+            .lock()
+            .unwrap()
+            .move_block(id as u64, x as u64, y as u64);
     });
 
     main_window.run()
