@@ -184,19 +184,109 @@ pub trait WorldManipulation {
 }
 
 impl WorldManipulation for World {
-    fn attach(&mut self, block: BlockID, attaching: BlockID) {}
+    fn attach(&mut self, block: BlockID, attaching: BlockID) {
+        self.0.get_mut(&block).unwrap().next = attaching;
+    }
     fn rem(&mut self, block_deleted: BlockID) {
-        // finds all blocks derived from this one and stores in hashmap
-        // clears all of them from the world, including the starting one.
+        fn kill_everything_in_sight(cur: BlockID, world: &World) -> Vec<BlockID> {
+            let mut murdervec = vec![cur];
+            let real_block = world.0.get(&cur).unwrap();
+            if real_block.id != 0 {
+                murdervec.append(&mut kill_everything_in_sight(real_block.next, world));
+            }
+            match real_block.btype {
+                BlockType::If(IfBlk {
+                    cond: _,
+                    if_stuff: x,
+                }) => {
+                    murdervec.append(&mut kill_everything_in_sight(x, world));
+                }
+                BlockType::IfElse(
+                    IfBlk {
+                        cond: _,
+                        if_stuff: x,
+                    },
+                    y,
+                ) => {
+                    murdervec.append(&mut kill_everything_in_sight(x, world));
+                    murdervec.append(&mut kill_everything_in_sight(y, world));
+                }
+                BlockType::While(WhileBlk {
+                    cond: _,
+                    while_stuff: x,
+                }) => {
+                    murdervec.append(&mut kill_everything_in_sight(x, world));
+                }
+                _ => (),
+            }
+
+            murdervec
+        }
+        let murdervec = kill_everything_in_sight(block_deleted, &self);
+        // time for the slaughter!
+        for death_row_inmate in murdervec {
+            self.0.remove(&death_row_inmate);
+        }
     }
     fn detach(&mut self, detaching: BlockID) {
-        // finds connection to the block
-        // sets it to 0.
-        // turns block into root
+        for block in self.0.values_mut() {
+            if block.next == detaching {
+                block.next = 0;
+            } else {
+                match block.btype {
+                    BlockType::If(IfBlk {
+                        cond: _,
+                        if_stuff: ref mut x,
+                    }) if *x == detaching => *x = 0,
+                    BlockType::IfElse(
+                        IfBlk {
+                            cond: _,
+                            if_stuff: ref mut x,
+                        },
+                        _,
+                    ) if *x == detaching => *x = 0,
+                    BlockType::IfElse(_, ref mut x) if *x == detaching => *x = 0,
+                    BlockType::While(WhileBlk {
+                        cond: _,
+                        while_stuff: ref mut x,
+                    }) if *x == detaching => *x = 0,
+                    _ => (),
+                }
+            }
+        }
+        self.0.get_mut(&detaching).unwrap().is_root = true;
     }
-    fn attach_if(&mut self, block: BlockID, attaching: BlockID) {}
-    fn attach_else(&mut self, block: BlockID, attaching: BlockID) {}
-    fn attach_while(&mut self, block: BlockID, attaching: BlockID) {}
+    fn attach_if(&mut self, block: BlockID, attaching: BlockID) {
+        match self.0.get_mut(&block).unwrap().btype {
+            BlockType::If(IfBlk {
+                cond: _,
+                if_stuff: ref mut x,
+            }) => *x = attaching,
+            BlockType::IfElse(
+                IfBlk {
+                    cond: _,
+                    if_stuff: ref mut x,
+                },
+                _,
+            ) => *x = attaching,
+            _ => (),
+        }
+    }
+    fn attach_else(&mut self, block: BlockID, attaching: BlockID) {
+        match self.0.get_mut(&block).unwrap().btype {
+            BlockType::IfElse(_, ref mut x) => *x = attaching,
+            _ => (),
+        }
+    }
+    fn attach_while(&mut self, block: BlockID, attaching: BlockID) {
+        match self.0.get_mut(&block).unwrap().btype {
+            BlockType::While(WhileBlk {
+                cond: _,
+                while_stuff: ref mut x,
+            }) => *x = attaching,
+            _ => (),
+        }
+    }
     fn move_block(&mut self, block: BlockID, x: u64, y: u64) {
         let real_block = self.0.get_mut(&block).unwrap();
         let is_root = real_block.is_root;
