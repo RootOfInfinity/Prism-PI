@@ -9,7 +9,7 @@ use std::{
     vec,
 };
 
-use blockdata::{Block, BlockType, World, WorldManipulation};
+use blockdata::{Assign, Block, BlockType, World, WorldManipulation};
 use data2gui::create_blockdata_from_world;
 use popup_asker::{Message, ask_popup};
 use slint::{Color, ComponentHandle, Model, ToSharedString, invoke_from_event_loop};
@@ -69,7 +69,7 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     let world_clone = Arc::clone(&world);
     main_window.on_summon_block(move |type_of_block| {
         match type_of_block {
-            SlintBlockType::Declaration => return,
+            SlintBlockType::Declaration => {}
             SlintBlockType::Expression => {
                 ask_popup(
                     Message {

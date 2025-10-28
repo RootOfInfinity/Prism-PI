@@ -25,7 +25,7 @@ export component Block inherits Rectangle{
     
     clip: true;
     width: block_width * 1px + 106px;
-    height: (126px)/2;
+    height: (75px)/2;
     z:500.0;
     
     Path {
@@ -62,7 +62,7 @@ export component Block inherits Rectangle{
 
 
     Text {
-        x:5px;
+        x:20px;
         text: block_name;
         color: black;
         font-family: "Comic Sans MS";
@@ -396,11 +396,19 @@ component FreestyleScreen{
             border-width: 5px;
             
             Button {
-                text: "spawn block";
+                text: "spawn expression block";
                 y:5px;
                 x:5px;
                 clicked => {
                     create_block(SlintBlockType.expression);
+                }
+            }   
+            Button {
+                text: "spawn declaration block";
+                x:5px;
+                y:40px;
+                clicked => {
+                    create_block(SlintBlockType.declaration);
                 }
             }   
 

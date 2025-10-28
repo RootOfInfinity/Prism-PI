@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use slint::{Color, ToSharedString};
+use slint::{Color, ToSharedString, format};
 
 use crate::gui::blockdata::{BlockType, IfBlk};
 
@@ -12,17 +12,17 @@ use super::{
 fn ylength_for_block_recur(world: &World, block: Block) -> HashMap<BlockID, u64> {
     let mut new_block_map: HashMap<BlockID, u64> = HashMap::new();
     let cur_len = match block.btype {
-        BlockType::FuncStart(_) => 126 / 2,
-        BlockType::Declaration(_, _) => 126 / 2,
-        BlockType::Assignment(_) => 126 / 2,
-        BlockType::Expression(_) => 126 / 2,
-        BlockType::Return(_) => 126 / 2,
+        BlockType::FuncStart(_) => 75 / 2,
+        BlockType::Declaration(_, _) => 75 / 2,
+        BlockType::Assignment(_) => 75 / 2,
+        BlockType::Expression(_) => 75 / 2,
+        BlockType::Return(_) => 75 / 2,
         BlockType::If(ifblk) => {
             let new_map =
                 ylength_for_block_recur(world, world.0.get(&ifblk.if_stuff).unwrap().clone());
             let len: u64 = new_map.values().sum();
             new_block_map.extend(new_map);
-            len + 126 / 2
+            len + 75 / 2
         }
         BlockType::IfElse(ifblk, elseblock) => {
             let mut new_map =
@@ -33,14 +33,14 @@ fn ylength_for_block_recur(world: &World, block: Block) -> HashMap<BlockID, u64>
             ));
             let len: u64 = new_map.values().sum();
             new_block_map.extend(new_map);
-            len + 126 / 2 + 126 / 2
+            len + 75 / 2 + 75 / 2
         }
         BlockType::While(whileblk) => {
             let new_map =
                 ylength_for_block_recur(world, world.0.get(&whileblk.while_stuff).unwrap().clone());
             let len: u64 = new_map.values().sum();
             new_block_map.extend(new_map);
-            len + 126 / 2
+            len + 75 / 2
         }
         BlockType::None => 0,
     };
@@ -75,7 +75,7 @@ fn location_for_block_recur(
                 length,
                 world.0.get(&ifblk.if_stuff).unwrap().clone(),
                 x + 50,
-                y + 126 / 2,
+                y + 75 / 2,
             );
             new_location_map.0.extend(ifmap.0);
             new_location_map.1.extend(ifmap.1);
@@ -87,7 +87,7 @@ fn location_for_block_recur(
                 length,
                 world.0.get(&ifblk.if_stuff).unwrap().clone(),
                 x + 50,
-                y + 126 / 2,
+                y + 75 / 2,
             );
             new_location_map.0.extend(ifmap.0);
             new_location_map.1.extend(ifmap.1);
@@ -96,7 +96,7 @@ fn location_for_block_recur(
                 length,
                 world.0.get(&elseblock).unwrap().clone(),
                 x + 50,
-                y + 126 / 2,
+                y + 75 / 2,
             );
             new_location_map.0.extend(elsemap.0);
             new_location_map.1.extend(elsemap.1);
@@ -108,7 +108,7 @@ fn location_for_block_recur(
                 length,
                 world.0.get(&whileblk.while_stuff).unwrap().clone(),
                 x + 50,
-                y + 126 / 2,
+                y + 75 / 2,
             );
             new_location_map.0.extend(whilemap.0);
             new_location_map.1.extend(whilemap.1);
@@ -171,6 +171,35 @@ pub fn create_blockdata_from_world(world: &mut World) -> slint::VecModel<BlockDa
                 block_name: s.to_shared_string(),
                 block_width: 50,
                 code: (s + ";").to_shared_string(),
+                x: locmap.0.get(&block.id).unwrap().0 as f32,
+                y: locmap.0.get(&block.id).unwrap().1 as f32,
+            },
+            BlockType::Declaration(t, a) => BlockData {
+                block_color: Color::from_rgb_u8(0, 0, 255),
+                block_id: block.id as i32,
+                block_name: format!(
+                    "{}: {} <- {}",
+                    a.vname,
+                    match t {
+                        super::blockdata::Type::Int => "int",
+                        super::blockdata::Type::Dcml => "dcml",
+                        super::blockdata::Type::Bool => "bool",
+                        super::blockdata::Type::None => "INVALID TYPE",
+                    },
+                    a.set_to
+                ),
+                block_width: 50,
+                code: format!(
+                    "{} {} = {}",
+                    match t {
+                        super::blockdata::Type::Int => "int",
+                        super::blockdata::Type::Dcml => "dcml",
+                        super::blockdata::Type::Bool => "bool",
+                        super::blockdata::Type::None => "_INVALID TYPE",
+                    },
+                    a.vname,
+                    a.set_to
+                ),
                 x: locmap.0.get(&block.id).unwrap().0 as f32,
                 y: locmap.0.get(&block.id).unwrap().1 as f32,
             },

@@ -75,8 +75,8 @@ pub struct Func {
 
 #[derive(Clone, Debug)]
 pub struct Assign {
-    vname: String,
-    set_to: String,
+    pub vname: String,
+    pub set_to: String,
     // set_to: ExprID,
 }
 
@@ -313,13 +313,13 @@ impl WorldManipulation for World {
             );
             if blocky.next == 0
                 && (x > blocky.loc.0 - 15 && x < blocky.loc.0 + 15)
-                && (y > blocky.loc.1 - 15 + blocky.length && y < blocky.loc.1 + 15 + blocky.length)
+                && (y > blocky.loc.1 + blocky.length && y < blocky.loc.1 + 15 + blocky.length)
             {
                 println!("Can attach!");
                 attach_to = blocky.id;
             }
             if (x > blocky.loc.0 - 15 && x < blocky.loc.0 + 15)
-                && (y > blocky.loc.1 - 15 + 126 / 2 && y < blocky.loc.1 + 15 + 126 / 2)
+                && (y > blocky.loc.1 - 15 + 75 / 2 && y < blocky.loc.1 + 15 + 75 / 2)
             {
                 match blocky.btype {
                     BlockType::If(IfBlk {

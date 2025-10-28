@@ -1,5 +1,8 @@
 use core::panic;
 use std::any::TypeId;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 use super::array::Array;
 use super::tokens::Type;
@@ -70,6 +73,34 @@ impl VM {
             }
             // println!("Whole Stack: {:#?}", self.get_entire_stack_wrapped());
             // println!("New IP: {}", self.ip);
+        }
+    }
+    pub fn timed_run(mut self, duration: Duration, interval: Duration) -> Option<i32> {
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            loop {
+                if let ProgState::Halt(x) = self.eval_inst() {
+                    tx.send(x);
+                    break;
+                }
+            }
+        });
+        let max_millis = duration.as_millis();
+        let int_millis = interval.as_millis();
+        let mut cur_millis = 0;
+        while cur_millis < max_millis {
+            let ans = rx.try_recv();
+            if let Ok(x) = ans {
+                return Some(x);
+            }
+            thread::sleep(interval);
+            cur_millis += int_millis;
+        }
+        let ans = rx.try_recv();
+        if let Ok(x) = ans {
+            return Some(x);
+        } else {
+            return None;
         }
     }
     pub fn debug_eval(&mut self) -> i32 {
