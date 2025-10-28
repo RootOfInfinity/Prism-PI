@@ -12,7 +12,7 @@ struct BlockData {
 }
 
 export component Block inherits Rectangle{
-    in property <int> block_width;
+    property <int> block_width;
     in property <color> block_color;
     in property <string> block_name;
     in property <string> code;
@@ -24,7 +24,9 @@ export component Block inherits Rectangle{
     callback move(length, length);
     
     clip: true;
+    block_width: blockName.width / 1px;
     width: block_width * 1px + 106px;
+    // width: blockName.width+ 100px;
     height: (75px)/2;
     z:500.0;
     
@@ -34,7 +36,7 @@ export component Block inherits Rectangle{
         stroke: black;
         stroke-width: 3px;
         fill: block_color;
-        MoveTo {x:5;y:(0)/3;}
+        MoveTo {x:0;y:(0)/3;}
 
         LineTo {x:15;y:(0)/3;}//indent
         LineTo {x:25;y:(20)/3;} 
@@ -55,13 +57,13 @@ export component Block inherits Rectangle{
 
         ArcTo {x:0;y:(95)/3; radius-x: 5; radius-y: 5; sweep: true;}
         LineTo {x:0;y:(5)/3;}
-        ArcTo {x:5;y:(0)/2; radius-x: 5; radius-y: 5; sweep: true;}
+        ArcTo {x:0;y:(0)/2; radius-x: 5; radius-y: 5; sweep: true;}
         
     }
     
 
 
-    Text {
+    blockName := Text {
         x:20px;
         text: block_name;
         color: black;
@@ -422,7 +424,7 @@ component FreestyleScreen{
     }
     
     for block[i] in blocks : Block{
-        block_width: block.block_width;
+        // block_width: block.block_width;
         block_color: block.block_color;
         block_name: block.block_name;
         x: block.x;
@@ -520,7 +522,7 @@ component BlockScreen {
     }
 
     for block[i] in blocks : Block{
-        block_width: block.block_width;
+        // block_width: block.block_width;
         block_color: block.block_color;
         block_name: block.block_name;
         x: block.x;
