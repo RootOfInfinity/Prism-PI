@@ -117,7 +117,7 @@ impl LexEngine {
             while self.is_numeric() {
                 if self.cur_char == '.' {
                     if has_point {
-                        return Err(self.err("".to_owned()));
+                        return Err(self.err("Can't have two points in a number.".to_owned()));
                     } else {
                         has_point = true;
                     }
@@ -161,7 +161,7 @@ impl LexEngine {
                     let next_char = match self.peek_char() {
                         Some(x) => x,
                         None => {
-                            return Err(self.err("".to_owned()));
+                            return Err(self.err("Ended right after that backslash".to_owned()));
                         }
                     };
                     match next_char {
@@ -170,7 +170,9 @@ impl LexEngine {
                         '"' => string_lit.push('"'),
                         _ => {
                             self.eat_char();
-                            return Err(self.err("".to_owned()));
+                            return Err(
+                                self.err("The backslash didn't have the correct stuff".to_owned())
+                            );
                         }
                     }
                     self.eat_char();
@@ -182,7 +184,7 @@ impl LexEngine {
                 }
             }
             if self.finished {
-                return Err(self.err("".to_owned()));
+                return Err(self.err("You can't stop in the middle of a string!".to_owned()));
             }
             self.eat_char();
             return Ok((
@@ -213,7 +215,7 @@ impl LexEngine {
                     ));
                 }
                 None => {
-                    return Err(self.err("".to_owned()));
+                    return Err(self.err("I have no clue what that symbol is".to_owned()));
                 }
             }
         }
@@ -228,7 +230,7 @@ impl LexEngine {
                     ')' => Token::RightParen,
                     ']' => Token::RightBrack,
                     '}' => Token::RightCurly,
-                    _ => return Err(self.err("".to_string())),
+                    _ => return Err(self.err("Weird grouping stuff".to_string())),
                 },
                 Loc::new(self.line, self.col),
             ));
@@ -247,7 +249,7 @@ impl LexEngine {
             self.cur_char
         );
         self.eat_char();
-        return Err(self.err("".to_owned()));
+        return Err(self.err("What is even that char doing?".to_owned()));
     }
     fn eat_char(&mut self) {
         if self.cur_char == '\n' {
