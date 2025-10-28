@@ -34,7 +34,7 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
     }));
 
     let message_clone = Arc::clone(&messages);
-    main_window.on_send_message_freestyle(move |mtype: MessageType, cont: slint::SharedString| {
+    main_window.on_send_message_blocks(move |mtype: MessageType, cont: slint::SharedString| {
         let mut message_lock = message_clone.lock().unwrap();
         let new_message = Message {
             message_type: mtype,
@@ -42,6 +42,9 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         };
         *message_lock.deref_mut() = new_message;
     });
+
+    
+    
 
     // CALLBACK BINDINGS //
 
