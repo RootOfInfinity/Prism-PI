@@ -330,7 +330,7 @@ component LevelScreen {
     callback test_code <=> codeArea.run_code;
     callback back_button <=> back.clicked;
 
-    problem: "do fibonocci or someone dies, be a good detective or else";
+    // problem: "do fibonocci or someone dies, be a good detective or else";
     back := Button {
         width: 50px;
         height: 50px;
@@ -340,7 +340,7 @@ component LevelScreen {
         y: 5px;
     }
     minimizeBlocks := Button {
-        y:5px + back.height +5px;
+        y:5px + back.height + 5px;
         x:5px;
         width: 50px;
         height: 50px;
@@ -365,8 +365,8 @@ component LevelScreen {
             y:5px;
             x:5px;
             font-size: 15px;
+            width: parent.width - self.x*2;
             wrap: word-wrap;
-            width: parent.width;
             text: problem;
             color: black;
         }
@@ -660,7 +660,7 @@ component StoryScreen {
     y:0;
     x:0;
     callback back_button <=> back.clicked;
-    callback to_levels <=> storybtn.clicked;
+    callback to_levels;
     back := Button {
         width: 50px;
         height: 50px;
@@ -676,9 +676,19 @@ component StoryScreen {
         source: @image-url("images/map.png");
 
     }
-    storybtn := Button {
-        text: "go to the levels!";
+    TouchArea {
+        width:100%;
+        height: 100%;
+        pointer-event(event) => {
+            if(event.button==PointerEventButton.left){
+                to_levels();
+            }
+            
+        }
     }
+    // storybtn := Button {
+    //     text: "go to the levels!";
+    // }
 }
 
 export component MainWindow inherits Window {
