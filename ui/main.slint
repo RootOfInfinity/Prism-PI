@@ -187,7 +187,7 @@ export component CodeArea inherits VerticalLayout {
         min-width: 300px;
         min-height: 300px;
         font-size: 14px;
-        has-focus: true;
+        // has-focus: true;
 
         text: "Write code here";
     }
@@ -209,7 +209,7 @@ export component CodeArea inherits VerticalLayout {
     }
 
 }
-
+/*
 component test {
     Rectangle {
         property <int> widthy;
@@ -246,7 +246,7 @@ component test {
     }
 }
 
-
+*/
 component SelectionScreen {
     callback freestyleClick <=> fm.clicked;
     callback storyClick <=> sm.clicked;
@@ -322,6 +322,61 @@ enum SlintBlockType {
     while_blk,
 }
 
+component levelScreen {
+    in property <string> problem;
+    in property <string> result <=> codeArea.result;
+    callback run_code <=> codeArea.run_code;
+    callback back_button <=> back.clicked;
+
+    problem: "do fibonocci or someone dies, be a good detective or else";
+    back := Button {
+        width: 50px;
+        height: 50px;
+        primary: false;
+        text: "<-";
+        x: 5px;
+        y: 5px;
+    }
+    minimizeBlocks := Button {
+        y:5px + back.height +5px;
+        x:5px;
+        width: 50px;
+        height: 50px;
+        text: "[=]";
+        clicked => {
+            if (problemText.width > 0px){
+                problemText.width = 0px;
+            }
+            else{
+                problemText.width = 300px;
+            }
+        }
+    }
+    problemText := Rectangle {
+        x: 60px;
+        y:5px;
+        height: parent.height - 10px;
+        width: 300px;
+        background: gray;
+        border-radius: 5px;
+        Text {
+            y:5px;
+            x:5px;
+            font-size: 15px;
+            wrap: word-wrap;
+            width: parent.width;
+            text: problem;
+            color: black;
+        }
+    }
+    codeArea := CodeArea {
+        x: 5px + back.width + 5px + problemText.width + 5px;
+        y: 5px;
+        parent_height: parent.height;
+        width: parent.width - self.x - 5px;
+    }
+}
+
 component FreestyleScreen{
     in property <string> result <=> codeArea.result;
     callback run_code <=> codeArea.run_code;
@@ -371,7 +426,6 @@ component FreestyleScreen{
         y: 5px;
         width: parent.width - self.x - 5px - blockArea.width - 5px;
         parent_height: parent.height;
-        
     }
 
     
@@ -474,7 +528,6 @@ component BlockScreen {
             }
         }
     }
-
     
     blockArea := Rectangle {
         x: parent.width - 205px;
@@ -596,8 +649,8 @@ component BlockScreen {
     }
 
     popup := PopUp {
-        width: 200px;
-        height: 50px;
+        width: 300px;
+        height: 75px;
     }
 }
 component StoryScreen {
