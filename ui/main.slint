@@ -336,7 +336,6 @@ component FreestyleScreen{
 
     
     
-
     back := Button {
         width: 50px;
         height: 50px;
@@ -479,8 +478,6 @@ component BlockScreen {
     }
 
     
-
-
     blockArea := Rectangle {
         x: parent.width - 205px;
         y: 5px;
@@ -493,6 +490,9 @@ component BlockScreen {
             background: gray;
             border-width: 5px;
             
+            
+
+
             expressionButton := Button {
                 text: "spawn expression block";
                 y:5px;
@@ -538,10 +538,25 @@ component BlockScreen {
         height: 50px;
     }
 }
-
-
-
-
+component StoryScreen {
+    y:0;
+    x:0;
+    callback back_button <=> back.clicked;
+    back := Button {
+        width: 50px;
+        height: 50px;
+        primary: false;
+        text: "<-";
+        x: 5px;
+        y: 5px;
+    }
+    Image {
+        image-fit: contain;
+        height: 100%;
+        width: 100%;
+        source: @image-url("images/map.png");
+    }
+}
 
 export component MainWindow inherits Window {
     title: "Prism-P.I.";
@@ -590,7 +605,14 @@ export component MainWindow inherits Window {
         back_button => {
             windowToSelect = SelectedWindow.select;
         }
-    
+    }
+    ts := StoryScreen {
+        width: 100%;
+        height: 100%;
+        visible: windowToSelect == SelectedWindow.story ? true : false;
+        back_button => {
+            windowToSelect = SelectedWindow.select;
+        }
     }
 
 
