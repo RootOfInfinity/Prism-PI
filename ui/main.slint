@@ -1,5 +1,5 @@
-import { Button, ComboBox, TextEdit, Spinner, VerticalBox, LineEdit } from "std-widgets.slint"; 
-export enum SelectedWindow { select, freestyle, story, blocks }
+import { Button, ComboBox, TextEdit, Spinner, VerticalBox, LineEdit, TabWidget } from "std-widgets.slint"; 
+export enum SelectedWindow { select, freestyle, story, blocks, levels }
 
 struct BlockData {
     block_id: int,
@@ -159,6 +159,7 @@ export component PopUp inherits VerticalLayout {
 }
 
 export component CodeArea inherits VerticalLayout {
+    in property <string> start_text;
     
     in property <string> result: "Nothing yet";
     callback run_code(string);
@@ -189,7 +190,7 @@ export component CodeArea inherits VerticalLayout {
         font-size: 14px;
         // has-focus: true;
 
-        text: "Write code here";
+        text: start_text;
     }
     startbutton := Button {
         height: 30px;
@@ -322,10 +323,11 @@ enum SlintBlockType {
     while_blk,
 }
 
-component levelScreen {
+component LevelScreen {
+    in property <string> start_text;
     in property <string> problem;
     in property <string> result <=> codeArea.result;
-    callback run_code <=> codeArea.run_code;
+    callback test_code <=> codeArea.run_code;
     callback back_button <=> back.clicked;
 
     problem: "do fibonocci or someone dies, be a good detective or else";
@@ -374,6 +376,7 @@ component levelScreen {
         y: 5px;
         parent_height: parent.height;
         width: parent.width - self.x - 5px;
+        start_text: start_text;
     }
 }
 
@@ -657,6 +660,7 @@ component StoryScreen {
     y:0;
     x:0;
     callback back_button <=> back.clicked;
+    callback to_levels <=> storybtn.clicked;
     back := Button {
         width: 50px;
         height: 50px;
@@ -670,6 +674,10 @@ component StoryScreen {
         height: 100%;
         width: 100%;
         source: @image-url("images/map.png");
+
+    }
+    storybtn := Button {
+        text: "go to the levels!";
     }
 }
 
@@ -680,6 +688,12 @@ export component MainWindow inherits Window {
     property <SelectedWindow> windowToSelect: SelectedWindow.select;
     in property <string> freestyle_string <=> fs.result;
     callback run_freestyle_code <=> fs.run_code;
+
+    callback run_hello_one_test <=> hello-one.test_code;
+    in property <string> hello_one_result <=> hello-one.result;
+    callback run_average_nums_test <=> average-nums.test_code;
+    in property <string> average_nums_result <=> average-nums.result;
+    callback run_fibonacci_test(string);
 
     in property <[BlockData]> blocks <=> bs.blocks;
     callback summon_block <=> bs.create_block;
@@ -727,6 +741,50 @@ export component MainWindow inherits Window {
         visible: windowToSelect == SelectedWindow.story ? true : false;
         back_button => {
             windowToSelect = SelectedWindow.select;
+        }
+        to_levels => {
+            windowToSelect = SelectedWindow.levels;
+        }
+    }
+    levels := TabWidget {
+        visible: windowToSelect == SelectedWindow.levels ? true : false;
+        width: 100%;
+        height: 100%;
+        Tab {
+            title: "Hello One";
+            hello_one := LevelScreen {
+                width: 100%;
+                height: 100%;
+                visible: windowToSelect == SelectedWindow.levels ? true : false;
+                problem: "Hello, you're the new investigator, right? Ugh, now I have to go through the whole "
+                    + "training thing yet again. Well, no better place to start than right now, right? "
+                    + "Just to test your skills, we should see how good you are at making code, which is a "
+                    + "vital part of our job at Prism Private Intelligence. We have a function laid out for you, "
+                    + "declared with the keyword 'fun', with a name, and some silly parenthesis. Sometimes there "
+                    + "will be some extra stuff in those parenthesis, sometimes not. Our people on the ground need "
+                    + "to analyze the data they recieve on the ground, but they recieve so much, we cannot do "
+                    + "all of it by hand, which is why we need you. For this one, I just need you to return the "
+                    + "number '1'. That is it. To return an answer, literally all you need to write is "
+                    + "'return {};' in the brackets of the function, where {} is any data. "
+                    + "\n\nAre you up for this task?";
+                // result: "The result of the tests will show up here.";
+                back_button => {
+                    windowToSelect = SelectedWindow.select;
+                }
+                start_text: "fun helloOne() -> int {\n    \n}";
+            }
+        }
+        Tab {
+            title: "Average Numbers";
+            average_nums := LevelScreen {
+                width: 100%;
+                height: 100%;
+                problem: "Average two numbers! And, they're both decimal values!";
+                back_button => {
+                    windowToSelect = SelectedWindow.select;
+                }
+                start_text: "fun averageDecimals(dcml num1, dcml num2) -> dcml {\n    \n}";
+            }
         }
     }
 

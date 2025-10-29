@@ -11,10 +11,10 @@ use slint::format;
 
 #[derive(Debug)]
 pub struct TestResult {
-    success: bool,
-    errors: Vec<CompileError>,
-    correct: u32,
-    incorrect: u32,
+    pub success: bool,
+    pub errors: Vec<CompileError>,
+    pub correct: u32,
+    pub incorrect: u32,
 }
 
 pub struct TestInfo {
@@ -57,7 +57,7 @@ pub fn test_against_json(data: TestInfo) -> TestResult {
             Ok(Some(x)) if x == 0 => {
                 correct += 1;
             }
-            Err(e) => {
+            Err(e) if errors.len() == 0 => {
                 errors.extend(e);
             }
             _ => (),

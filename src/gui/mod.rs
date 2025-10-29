@@ -9,14 +9,17 @@ use std::{
     vec,
 };
 
+use crate::lang::tokens::Type;
 use blockdata::{Assign, Block, BlockType, World, WorldManipulation};
 use data2gui::create_blockdata_from_world;
 use popup_asker::{Message, ask_popup};
-use slint::{Color, ComponentHandle, Model, ToSharedString, invoke_from_event_loop};
+use slint::{Color, ComponentHandle, Model, ToSharedString, format, invoke_from_event_loop};
 
 mod blockdata;
 mod data2gui;
 mod popup_asker;
+
+use crate::tester::{LEVELS, TestInfo, test_against_json};
 
 use super::lang::run_code;
 slint::include_modules!();
@@ -43,9 +46,6 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         *message_lock.deref_mut() = new_message;
     });
 
-    
-    
-
     // CALLBACK BINDINGS //
 
     // Running a string of freestyle code and updating
@@ -55,13 +55,89 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         thread::spawn(move || {
             let expensive_string = match run_code(code.try_into().unwrap()) {
                 Ok(int) => int.to_string(),
-                Err(e) => format!("{:#?}", e),
+                Err(e) => format!("{:#?}", e).to_string(),
             };
             let main_window_clone = main_window_weak.clone();
             invoke_from_event_loop(move || {
                 main_window_clone
                     .unwrap()
                     .set_freestyle_string(expensive_string.try_into().unwrap());
+            })
+        });
+    });
+
+    let main_window_weak = main_window.as_weak();
+    main_window.on_run_hello_one_test(move |code| {
+        let main_window_weak = main_window_weak.clone();
+        thread::spawn(move || {
+            let info = TestInfo {
+                code: code.to_string() + " fun test() -> int { return helloOne(); }",
+                inputs_type: vec![],
+                output_type: crate::lang::tokens::Type::Int,
+                json: json::parse(LEVELS[0]).unwrap(),
+            };
+            let result = test_against_json(info);
+            let mut final_string = String::new();
+            if result.success {
+                final_string += "You Won!\n";
+            } else {
+                final_string += "You LOSE! LOL!\n";
+            }
+            if result.errors.len() > 0 {
+                final_string += "Unfortunately, you had some compile errors.\n";
+                final_string = format!("{}{:#?}", final_string, result.errors).to_string();
+                final_string += "\n";
+            }
+            final_string.extend(
+                format!(
+                    "Correct: {} |#| Incorrect: {}",
+                    result.correct, result.incorrect
+                )
+                .chars(),
+            );
+            let main_window_weak = main_window_weak.clone();
+            invoke_from_event_loop(move || {
+                main_window_weak
+                    .unwrap()
+                    .set_hello_one_result(final_string.try_into().unwrap());
+            })
+        });
+    });
+
+    let main_window_weak = main_window.as_weak();
+    main_window.on_run_average_nums_test(move |code| {
+        let main_window_weak = main_window_weak.clone();
+        thread::spawn(move || {
+            let info = TestInfo {
+                code: code.to_string() + " fun test(dcml num1, dcml num2) -> dcml { return averageDecimals(num1, num2); }",
+                inputs_type: vec![Type::Dcml, Type::Dcml],
+                output_type: Type::Dcml,
+                json: json::parse(LEVELS[1]).unwrap(),
+            };
+            let result = test_against_json(info);
+            let mut final_string = String::new();
+            if result.success {
+                final_string += "You Won!\n";
+            } else {
+                final_string += "You LOSE! LOL!\n";
+            }
+            if result.errors.len() > 0 {
+                final_string += "Unfortunately, you had some compile errors.\n";
+                final_string = format!("{}{:#?}", final_string, result.errors).to_string();
+                final_string += "\n";
+            }
+            final_string.extend(
+                format!(
+                    "Correct: {} |#| Incorrect: {}",
+                    result.correct, result.incorrect
+                )
+                .chars(),
+            );
+            let main_window_weak = main_window_weak.clone();
+            invoke_from_event_loop(move || {
+                main_window_weak
+                    .unwrap()
+                    .set_average_nums_result(final_string.try_into().unwrap());
             })
         });
     });
