@@ -466,13 +466,11 @@ component BlockScreen {
         clicked => {
             if (blockArea.width > 0px){
                 blockArea.width = 0px;
-                expressionButton.x = 300px;
-                declarationButton.x = 300px;
+                // declarationButton.x = 300px;
             }
             else{
                 blockArea.width = 200px;
-                expressionButton.x  = 5px;
-                declarationButton.x  = 5px;
+                // declarationButton.x  = 5px;
             }
         }
     }
@@ -489,28 +487,92 @@ component BlockScreen {
             x:0px;
             background: gray;
             border-width: 5px;
-            
-            
 
-
-            expressionButton := Button {
-                text: "spawn expression block";
+            Rectangle {
+                height: (75px)/2;
                 y:5px;
-                x:5px;
-                clicked => {
-                    debug("expression");
-                    create_block(SlintBlockType.expression);
+                Path {
+                    x:0;
+                    y:0;
+                    stroke: black;
+                    stroke-width: 3px;
+                    fill: red;
+                    MoveTo {x:0;y:(0)/3;}
+
+                    LineTo {x:15;y:(0)/3;}//indent
+                    LineTo {x:25;y:(20)/3;} 
+                    LineTo {x:45;y:(20)/3;}
+                    LineTo {x:55;y:(0)/3;}
+                    
+                    LineTo {x:95+50;y:(0)/3;}
+                    ArcTo {x:100+50;y:(5)/3; radius-x: 5; radius-y: 5; sweep: true;}
+                    LineTo {x:100+50;y:(95)/3;}
+                    ArcTo {x:95+50;y:(100)/3; radius-x: 5; radius-y: 5; sweep: true;}
+                    
+                    
+                    LineTo {x:55;y:(100)/3;}//outdent
+                    LineTo {x:45;y:(120)/3;}
+                    LineTo {x:25;y:(120)/3;}
+                    LineTo {x:15;y:(100)/3;}
+                    LineTo {x:5;y:(100)/3;}
+
+                    ArcTo {x:0;y:(95)/3; radius-x: 5; radius-y: 5; sweep: true;}
+                    LineTo {x:0;y:(5)/3;}
+                    ArcTo {x:0;y:(0)/2; radius-x: 5; radius-y: 5; sweep: true;}
+                    
                 }
-            }   
-            declarationButton :=Button {
-                text: "spawn declaration block";
-                x:5px;
-                y:40px;
-                clicked => {
-                    debug("declarationButton");
-                    create_block(SlintBlockType.declaration);
+                TouchArea {
+                    pointer-event(event) => {
+                        if(event.button==PointerEventButton.left){
+                            create_block(SlintBlockType.expression);
+                        }
+                        
+                    }
                 }
-            }   
+            }
+            
+            Rectangle {
+                height: (75px)/2;
+                y:45px;
+                Path {
+                    x:0;
+                    y:0;
+                    stroke: black;
+                    stroke-width: 3px;
+                    fill: orange;
+                    MoveTo {x:0;y:(0)/3;}
+
+                    LineTo {x:15;y:(0)/3;}//indent
+                    LineTo {x:25;y:(20)/3;} 
+                    LineTo {x:45;y:(20)/3;}
+                    LineTo {x:55;y:(0)/3;}
+                    
+                    LineTo {x:95+50;y:(0)/3;}
+                    ArcTo {x:100+50;y:(5)/3; radius-x: 5; radius-y: 5; sweep: true;}
+                    LineTo {x:100+50;y:(95)/3;}
+                    ArcTo {x:95+50;y:(100)/3; radius-x: 5; radius-y: 5; sweep: true;}
+                    
+                    
+                    LineTo {x:55;y:(100)/3;}//outdent
+                    LineTo {x:45;y:(120)/3;}
+                    LineTo {x:25;y:(120)/3;}
+                    LineTo {x:15;y:(100)/3;}
+                    LineTo {x:5;y:(100)/3;}
+
+                    ArcTo {x:0;y:(95)/3; radius-x: 5; radius-y: 5; sweep: true;}
+                    LineTo {x:0;y:(5)/3;}
+                    ArcTo {x:0;y:(0)/2; radius-x: 5; radius-y: 5; sweep: true;}
+                    
+                }
+                TouchArea {
+                    pointer-event(event) => {
+                        if(event.button==PointerEventButton.left){
+                            create_block(SlintBlockType.declaration);
+                        }
+                        
+                    }
+                }
+            }
 
         }
         logo:=Image {
