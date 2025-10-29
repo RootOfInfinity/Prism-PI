@@ -281,11 +281,16 @@ impl ParsingMachine {
             unreachable!()
         };
         let ident = ident.clone();
+
         self.eat_tok();
         if let Token::LeftParen = self.cur_tok.0 {
             self.eat_tok();
             let mut param_vec = Vec::new();
+
             loop {
+                if let Token::RightParen = self.cur_tok.0 {
+                    break;
+                }
                 let expr = self.parse_expression()?;
                 param_vec.push(expr);
                 match self.cur_tok.0 {

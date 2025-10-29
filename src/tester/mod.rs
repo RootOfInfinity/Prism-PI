@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fs, time::Duration};
 
 use crate::lang::{
     errors::CompileError,
@@ -9,6 +9,7 @@ use crate::lang::{
 use json::JsonValue;
 use slint::format;
 
+#[derive(Debug)]
 pub struct TestResult {
     success: bool,
     errors: Vec<CompileError>,
@@ -17,11 +18,13 @@ pub struct TestResult {
 }
 
 pub struct TestInfo {
-    code: String,
-    inputs_type: Vec<Type>,
-    output_type: Type,
-    json: JsonValue,
+    pub code: String,
+    pub inputs_type: Vec<Type>,
+    pub output_type: Type,
+    pub json: JsonValue,
 }
+
+include!(concat!(env!("OUT_DIR"), "/jsonstuff.rs"));
 
 /// This function assumes an entry point of 'fun test(inputs) -> output'.
 /// The json also needs to be formatted in a specific way. There must be a top
@@ -45,13 +48,13 @@ pub fn test_against_json(data: TestInfo) -> TestResult {
         }
         let output = tests[i]["inputs"][0].dump();
         let code_to_add = format!(
-            "fun main() -> int {{ return (test({}) == {}) becomes int; }}",
+            "fun main() -> int {{ if test({}) == {} {{ return 0; }} return 1; }}",
             inputs_string, output
         );
         let new_code = data.code.clone() + code_to_add.as_str();
         let res = run_code_timed(new_code, Duration::from_secs(2), Duration::from_millis(100));
         match res {
-            Ok(Some(x)) if x == 1 => {
+            Ok(Some(x)) if x == 0 => {
                 correct += 1;
             }
             Err(e) => {
