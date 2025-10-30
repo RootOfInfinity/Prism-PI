@@ -169,17 +169,14 @@ impl FuncCompiler {
     }
     fn track_var(&mut self, id: String, typ: Type) {
         // doesn't increment amount_in_stack
-        let ind = self.amount_in_stack + typ.size() as u16 - 1;
+        let ind = self.amount_in_stack + typ.size() as u16;
         self.amount_in_stack += typ.size() as u16;
         self.var_tracker.insert(id, (ind as u16, typ));
     }
     // gets the offset from the top of the var ident passed in
     fn get_var(&self, id: &String) -> (u16, Type) {
         let (varindex, vartype) = self.var_tracker.get(id).unwrap();
-        (
-            self.amount_in_stack as u16 - varindex - 1,
-            vartype.to_owned(),
-        )
+        (self.amount_in_stack as u16 - varindex, vartype.to_owned())
     }
     // recursively compiles the ExprAST and pushes it to self.code
     fn compile_expr(&mut self, expr: ExprAST) -> Type {
@@ -349,6 +346,7 @@ impl FuncCompiler {
                     self.func.name, start_ip
                 )));
                 self.amount_in_stack -= self.compile_expr(x.cond.expr).size() as u16;
+                // self.compile_expr(x.cond.expr);
                 self.code.push(Instruction::Jnz(format!(
                     "{}-while_{}_end",
                     self.func.name, start_ip
