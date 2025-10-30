@@ -142,6 +142,44 @@ pub fn run_gui_test(args: Vec<String>) -> Result<(), slint::PlatformError> {
         });
     });
 
+    let main_window_weak = main_window.as_weak();
+    main_window.on_run_fibonacci_test(move |code| {
+        let main_window_weak = main_window_weak.clone();
+        thread::spawn(move || {
+            let info = TestInfo {
+                code: code.to_string() + " fun test(int num) -> int { return fib(num); }",
+                inputs_type: vec![],
+                output_type: crate::lang::tokens::Type::Int,
+                json: json::parse(LEVELS[2]).unwrap(),
+            };
+            let result = test_against_json(info);
+            let mut final_string = String::new();
+            if result.success {
+                final_string += "You Won!\n";
+            } else {
+                final_string += "You LOSE! LOL!\n";
+            }
+            if result.errors.len() > 0 {
+                final_string += "Unfortunately, you had some compile errors.\n";
+                final_string = format!("{}{:#?}", final_string, result.errors).to_string();
+                final_string += "\n";
+            }
+            final_string.extend(
+                format!(
+                    "Correct: {} |#| Incorrect: {}",
+                    result.correct, result.incorrect
+                )
+                .chars(),
+            );
+            let main_window_weak = main_window_weak.clone();
+            invoke_from_event_loop(move || {
+                main_window_weak
+                    .unwrap()
+                    .set_fib_result(final_string.try_into().unwrap());
+            })
+        });
+    });
+
     // Summoning a block without defined features
     let message_clone = Arc::clone(&messages);
     let main_window_weak = main_window.as_weak();

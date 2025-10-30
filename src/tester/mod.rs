@@ -46,12 +46,13 @@ pub fn test_against_json(data: TestInfo) -> TestResult {
         if inputs_string.len() > 0 {
             inputs_string.pop();
         }
-        let output = tests[i]["inputs"][0].dump();
+        let output = tests[i]["output"].dump();
         let code_to_add = format!(
             "fun main() -> int {{ if test({}) == {} {{ return 0; }} return 1; }}",
             inputs_string, output
         );
         let new_code = data.code.clone() + code_to_add.as_str();
+        // println!("{}", new_code);
         let res = run_code_timed(new_code, Duration::from_secs(2), Duration::from_millis(100));
         match res {
             Ok(Some(x)) if x == 0 => {

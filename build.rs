@@ -6,12 +6,13 @@ fn main() {
         .expect("Could not find ./levels/hello_one.json");
     let average_numbers = fs::read_to_string("./levels/average_nums.json")
         .expect("Could not find ./levels/average_nums.json");
+    let fib = fs::read_to_string("./levels/fib.json").expect("Could not find ./levels/fib.json");
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = format!("{}/jsonstuff.rs", out_dir);
     let data = format!(
-        "pub const LEVELS: [&str; 2] = [r#\"{}\"#, r#\"{}\"#];",
-        hello_one, average_numbers
+        "pub const LEVELS: [&str; 3] = [r#\"{}\"#, r#\"{}\"#, r#\"{}\"#];",
+        hello_one, average_numbers, fib
     );
     fs::write(dest_path, data).unwrap();
 }
