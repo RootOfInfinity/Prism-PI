@@ -256,8 +256,12 @@ component SelectionScreen {
     Rectangle {
         VerticalLayout {
             width: 100%;
-            height: 30%;
+            height: 50%;
             alignment: end;
+            logo:=Image {
+                height: 100%; 
+                source: @image-url("images/Prism-P.I._logo_temp.png");
+            }
             Text {
                 text: "Welcome to Prism Private Intelligence!";
                 horizontal-alignment: center;
